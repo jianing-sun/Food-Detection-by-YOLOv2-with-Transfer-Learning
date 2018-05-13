@@ -23,7 +23,6 @@ def yolo_filter_boxes(box_confidence, boxes, box_class_probs, threshold=.6):
     :param threshold: remove the box which highest class prob score < threshold
     :return:
     """
-    print(box_confidence)
     box_scores = box_confidence * box_class_probs
     box_classes = K.argmax(box_scores, axis=-1)  # return the index by argmax taken from the last axis
     box_class_scores = K.max(box_scores, axis=-1)
@@ -138,7 +137,7 @@ if __name__ == '__main__':
     scores, boxes, classes = yolo_eval(yolo_outputs, image_shape)
     out_scores, out_boxes, out_classes = predict(sess, 'test.jpg')
 
-
+    print('out_scores: {}. out_boxes: {}. out_classes: {}.'.format(out_scores, out_boxes, out_classes))
 
 
 
