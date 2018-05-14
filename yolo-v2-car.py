@@ -131,6 +131,7 @@ if __name__ == '__main__':
     image_shape = (720., 1280.)
 
     yolo_model = load_model('./yolo.h5')
+    yolo_model.summary()
 
     yolo_outputs = yolo_head(yolo_model.output, anchors, len(class_names))
 

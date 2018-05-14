@@ -29,7 +29,7 @@ name(1:nr, 1) = {'20151127_115133'};
 tuple = [name, tuple];
 
 %% Write file
-datei = fopen('data_js.csv', 'w');
+datei = fopen('data_js_corrected.csv', 'w');
 separator = ';';
 decimal = '.';
 excelYear = 2013;
@@ -84,10 +84,10 @@ for j=1:n_images
             end
         end
         
-        if z ~= size(cellArray, 1) % prevent a empty line at EOF
+%         if z ~= size(cellArray, 1) % prevent a empty line at EOF
             % OUTPUT newline
-            fprintf(datei, '\n');
-        end
+        fprintf(datei, '\n');
+%         end
     end
 end
 
