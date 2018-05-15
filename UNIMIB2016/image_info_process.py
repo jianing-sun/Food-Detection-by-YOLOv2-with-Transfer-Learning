@@ -85,6 +85,7 @@ def load_images(image_data):
                                           'Dataset/UNIMIB2016/original/', data[0] + '.jpg'))
         img = np.array(img, dtype=np.uint8)
         images.append(img)
+    return images
 
 
 def images2npv(images, image_data, shuffle=False):
@@ -107,4 +108,5 @@ if __name__ == '__main__':
     label_dict = create_label_dict('./unimin2016_classes.txt')
     # print(label_dict)
     image_data = csv2data(label_dict)
-    load_images(image_data)
+    images = load_images(image_data)
+    images2npv(images, image_data)
