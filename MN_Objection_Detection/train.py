@@ -9,7 +9,7 @@ from keras.layers import Reshape, Conv2D, Input, Lambda
 from keras.models import Model
 from keras.optimizers import Adam
 
-from mobile_net import MobileNetV1
+from networks.MobileNet_v1 import MobileNetV1
 from preprocessing import parse_annotation, BatchGenerator
 
 
@@ -19,11 +19,10 @@ def normalize(image):
 
 def train():
     mobilenet = MobileNetV1(input_shape=(224, 224, 3), include_top=False)
-    # mobilenet = MobileNet(input_shape=(224, 224, 3), include_top=False)
 
     x = mobilenet(input_image)
-    x = Conv2D(BOX * (4 + 1 + CLASS), (1, 1), strides=(1, 1), padding='same', name='conv_23')(x)
-    output = Reshape((GRID_H, GRID_W, BOX, 4 + 1 + CLASS))(x)
+    x = Conv2D(N_BOX * (4 + 1 + CLASS), (1, 1), strides=(1, 1), padding='same', name='conv_23')(x)
+    output = Reshape((GRID_H, GRID_W, N_BOX, 4 + 1 + CLASS))(x)
 
     # small hack to allow true_boxes to be registered when Keras build the model
     # for more information: https://github.com/fchollet/keras/issues/2790
@@ -99,7 +98,7 @@ def custom_loss(y_true, y_pred):
     pred_box_xy = tf.sigmoid(y_pred[..., :2]) + cell_grid
 
     ### adjust w and h
-    pred_box_wh = tf.exp(y_pred[..., 2:4]) * np.reshape(ANCHORS, [1, 1, 1, BOX, 2])
+    pred_box_wh = tf.exp(y_pred[..., 2:4]) * np.reshape(ANCHORS, [1, 1, 1, N_BOX, 2])
 
     ### adjust confidence
     pred_box_conf = tf.sigmoid(y_pred[..., 4])
@@ -192,7 +191,7 @@ def custom_loss(y_true, y_pred):
     true_box_xy, true_box_wh, coord_mask = tf.cond(tf.less(seen, WARM_UP_BATCHES),
                                                    lambda: [true_box_xy + (0.5 + cell_grid) * no_boxes_mask,
                                                             true_box_wh + tf.ones_like(true_box_wh) * np.reshape(
-                                                                ANCHORS, [1, 1, 1, BOX, 2]) * no_boxes_mask,
+                                                                ANCHORS, [1, 1, 1, N_BOX, 2]) * no_boxes_mask,
                                                             tf.ones_like(coord_mask)],
                                                    lambda: [true_box_xy,
                                                             true_box_wh,
@@ -235,16 +234,25 @@ def custom_loss(y_true, y_pred):
 
 
 if __name__ == '__main__':
+
+    ''' Initiailize parameters '''
     LABELS = ['rice']
 
-    IMAGE_H, IMAGE_W = 224, 224
+    IMAGE_H, IMAGE_W = 224, 224  # must equal to GRID_H * 32
     GRID_H, GRID_W = 7, 7  # 13, 13
-    BOX = 5
+    N_BOX = 5
     CLASS = len(LABELS)
     CLASS_WEIGHTS = np.ones(CLASS, dtype='float32')
     OBJ_THRESHOLD = 0.3
     NMS_THRESHOLD = 0.3
-    ANCHORS = [4.33, 3.64, 6.92, 6.26, 10.81, 7.48, 10.81, 4.86, 12.20, 9.29]
+
+    # Read knn generated anchor_5.txt
+    ANCHORS = []
+    with open('/Volumes/JS/UECFOOD100_JS/generated_anchors/anchors_5.txt', 'r') as anchor_file:
+        for i, line in enumerate(anchor_file):
+            line = line.rstrip('\n')
+            ANCHORS.append(list(map(float, line.split(', '))))
+    ANCHORS = list(list(np.array(ANCHORS).reshape(1, -1))[0])
 
     NO_OBJECT_SCALE = 1.0
     OBJECT_SCALE = 5.0
@@ -260,16 +268,16 @@ if __name__ == '__main__':
         'IMAGE_W': IMAGE_W,
         'GRID_H': GRID_H,
         'GRID_W': GRID_W,
-        'BOX': BOX,
+        'BOX': N_BOX,
         'LABELS': LABELS,
         'CLASS': len(LABELS),
         'ANCHORS': ANCHORS,
         'BATCH_SIZE': BATCH_SIZE,
-        'TRUE_BOX_BUFFER': 50,
+        'TRUE_BOX_BUFFER': TRUE_BOX_BUFFER,
     }
 
     image_path = '/Volumes/JS/UECFOOD100_JS/1/'
-    annot_path = '/Volumes/JS/UECFOOD100_JS/1/annotations/'
+    annot_path = '/Volumes/JS/UECxFOOD100_JS/1/annotations/'     # TODO: fix multi-object annotation!!
 
     all_imgs, seen_labels = parse_annotation(annot_path, image_path)
 
@@ -285,7 +293,7 @@ if __name__ == '__main__':
     ''' Start training '''
     train_valid_split = int(0.8 * len(all_imgs))
 
-    train_batch = BatchGenerator(all_imgs[:train_valid_split], generator_config, norm=normalize)
+    train_batch = BatchGenerator(all_imgs[:train_valid_split], generator_config, norm=normalize, jitter=False)
     valid_batch = BatchGenerator(all_imgs[train_valid_split:], generator_config, norm=normalize, jitter=False)
 
     input_image = Input(shape=(IMAGE_H, IMAGE_W, 3))
