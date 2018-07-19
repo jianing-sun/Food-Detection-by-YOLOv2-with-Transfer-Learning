@@ -243,6 +243,7 @@ def plt_example_batch(batches, batch_size=16):
     assert batches[0][0][0].shape[0] == batch_size       # in general 16x224x224x3
     for i in range(0, batch_size):
         img = batches[0][0][0][i]
+        plt.figure(i)
         plt.imshow(img.astype('uint8'))
 
 
@@ -302,10 +303,12 @@ if __name__ == '__main__':
     for img in all_imgs:
         img['filename'] = img['filename']
 
-    print('=> Generate BatchGenerator...')
+    print('=> Generate BatchGenerator.')
     batches = BatchGenerator(all_imgs, generator_config)
 
-    plt_example_batch(batches, BATCH_SIZE)
+    img = batches[0][0][0][5]
+    plt.imshow(img.astype('uint8'))
+    # plt_example_batch(batches, BATCH_SIZE)
 
     ''' Start training '''
     train_valid_split = int(0.8 * len(all_imgs))
