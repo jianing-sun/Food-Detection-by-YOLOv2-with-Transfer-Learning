@@ -92,6 +92,7 @@ def write_xml(line, i_folder, category):
         xmin.text = line[1]
         ymin = ET.SubElement(bndbox, 'ymin')
         ymin.text = line[2]
+
         xmax = ET.SubElement(bndbox, 'xmax')
         xmax.text = line[3]
         ymax = ET.SubElement(bndbox, 'ymax')
@@ -100,27 +101,29 @@ def write_xml(line, i_folder, category):
         tree = ET.ElementTree(root)
         tree.write(anno_path, pretty_print=True, encoding='utf-8')
     else:
-        print('folder ' + str(i_folder) + ', img ' + line[0] + ' has another object.')
-        tree = ET.parse(anno_path)
-        root = tree.getroot()
-        object_tag = [root.getchildren()[x].tag == 'object' for x in range(0, len(root.getchildren()))]
-        index = [i for i, x in enumerate(object_tag) if x][0]
-        object = root.getchildren()[index]
+        pass
+        # print('folder ' + str(i_folder) + ', img ' + line[0] + ' has another object.')
+        # tree = ET.parse(anno_path)
+        # root = tree.getroot()
+        # object_tag = [root.getchildren()[x].tag == 'object' for x in range(0, len(root.getchildren()))]
+        # index = [i for i, x in enumerate(object_tag) if x][0]
+        # object = root.getchildren()[index]
+        #
+        # name = ET.SubElement(object, 'name')
+        # name.text = category[i_folder - 1]
+        #
+        # bndbox = ET.SubElement(object, 'bndbox')
+        # xmin = ET.SubElement(bndbox, 'xmin')
+        # xmin.text = line[1]
+        # ymin = ET.SubElement(bndbox, 'ymin')
+        # ymin.text = line[2]
+        # xmax = ET.SubElement(bndbox, 'xmax')
+        # xmax.text = line[3]
+        # ymax = ET.SubElement(bndbox, 'ymax')
+        # ymax.text = line[4]
+        # pass
 
-        name = ET.SubElement(object, 'name')
-        name.text = category[i_folder - 1]
-
-        bndbox = ET.SubElement(object, 'bndbox')
-        xmin = ET.SubElement(bndbox, 'xmin')
-        xmin.text = line[1]
-        ymin = ET.SubElement(bndbox, 'ymin')
-        ymin.text = line[2]
-        xmax = ET.SubElement(bndbox, 'xmax')
-        xmax.text = line[3]
-        ymax = ET.SubElement(bndbox, 'ymax')
-        ymax.text = line[4]
-
-        tree.write(anno_path, pretty_print=True, encoding='utf-8')  # TODO: organize the rewrite .xml file format
+        # tree.write(anno_path, pretty_print=True, encoding='utf-8')  # TODO: organize the rewrite .xml file format
 
 
 def read_category():
@@ -135,9 +138,11 @@ def read_category():
 
 
 def rm_anno_dir():
+    print('removing wrongly created annotation folder under each category...')
     for i in range(1, 101):
         if os.path.exists('/Volumes/JS/UECFOOD100_JS/' + str(i) + '/annotations_new'):
             shutil.rmtree('/Volumes/JS/UECFOOD100_JS/' + str(i) + '/annotations_new')
+    print('Done!')
 
 
 def gen_xmls():

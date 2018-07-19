@@ -15,12 +15,14 @@
       <xmax>370</xmax>
       <ymax>486</ymax>
     </bndbox>
-    <name>rice</name>
+  </object>
+  <object>
+    <name>jiaozi</name>
     <bndbox>
-      <xmin>0</xmin>
-      <ymin>143</ymin>
-      <xmax>370</xmax>
-      <ymax>486</ymax>
+      <xmin>363</xmin>
+      <ymin>91</ymin>
+      <xmax>800</xmax>
+      <ymax>560</ymax>
     </bndbox>
   </object>
 </annotation>

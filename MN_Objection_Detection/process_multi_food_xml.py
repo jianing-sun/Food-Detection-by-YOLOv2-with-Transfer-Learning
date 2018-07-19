@@ -34,9 +34,10 @@ def write_multifood_xml(img_name, bb_info2xml, category):
         depth = ET.SubElement(size, 'width')
         depth.text = '3'
 
-        object = ET.SubElement(root, 'object')
+        # object = ET.SubElement(root, 'object')
 
         for j in range(0, len(bb_info2xml)):
+            object = ET.SubElement(root, 'object')
             name = ET.SubElement(object, 'name')
             name.text = category[int(bb_info2xml[j][0]) - 1]
 
@@ -51,25 +52,29 @@ def write_multifood_xml(img_name, bb_info2xml, category):
             ymax.text = bb_info2xml[j][4]
 
         tree = ET.ElementTree(root)
-        tree.write('/Volumes/JS/UECFOOD100_JS/' + bb_info2xml[i][0] + '/' + 'annotations_new/' + img_name[0] + '.xml', pretty_print=True)
+        tree.write('/Volumes/JS/UECFOOD100_JS/' + bb_info2xml[i][0] + '/' + 'annotations_new/' + img_name[:-4] + '.xml', pretty_print=True)
 
 
-category = read_category()
-with open('/Volumes/JS/UECFOOD100_JS/multiple_food.txt', 'r') as file:
-    for i, line in enumerate(file):
-        if i > 0:
-            line = line.rstrip('\n')
-            line = line.split(' ')[:-1]
-            print(line)
-            bb_info2xml = []
-            for j in range(1, len(line)):
-                with open('/Volumes/JS/UECFOOD100_JS/' + line[j] + '/new_bb_info.txt', 'r') as bb_file:
-                    for l in bb_file.readlines():
-                        if l.startswith(line[0]):
-                            l = l.rstrip('\n').split(' ')
-                            l[0] = line[j]
-                            bb_info2xml.append(l)
-                            break
-            for j in range(1, len(line)):
-                img_name = line[0] + '.jpg'
-                write_multifood_xml(img_name, bb_info2xml, category)
+if __name__ == '__main__':
+    print('Start here')
+    category = read_category()
+    with open('/Volumes/JS/UECFOOD100_JS/multiple_food.txt', 'r') as file:
+        for i, line in enumerate(file):
+            if i > 0:
+                line = line.rstrip('\n')
+                line = line.split(' ')[:-1]
+                print(line)
+                bb_info2xml = []
+                for j in range(1, len(line)):
+                    with open('/Volumes/JS/UECFOOD100_JS/' + line[j] + '/new_bb_info.txt', 'r') as bb_file:
+                        for l in bb_file.readlines():
+                            if l.startswith(line[0]):
+                                l = l.rstrip('\n').split(' ')
+                                l[0] = line[j]
+                                bb_info2xml.append(l)
+                                break
+                for j in range(1, len(line)):
+                    img_name = line[0] + '.jpg'
+                    write_multifood_xml(img_name, bb_info2xml, category)
+
+    print('Done!')

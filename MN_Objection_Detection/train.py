@@ -17,7 +17,9 @@ def normalize(image):
     return image / 255.
 
 
-def train():
+def get_model():
+    """ Build MobileNetV1 model """
+    print('=> Building MobileNetV1 model...')
     mobilenet = MobileNetV1(input_shape=(224, 224, 3), include_top=False)
 
     x = mobilenet(input_image)
@@ -30,8 +32,12 @@ def train():
 
     model = Model([input_image, true_boxes], output)
     print(model.summary())
+    return model
 
-    layer = model.layers[-4]  # the last convolutional layer
+
+def train(model):
+
+    layer = model.layers[-4]            # the last convolutional layer
     weights = layer.get_weights()
 
     new_kernel = np.random.normal(size=weights[0].shape) / (GRID_H * GRID_W)
@@ -45,21 +51,22 @@ def train():
                                mode='min',
                                verbose=1)
 
-    checkpoint = ModelCheckpoint('mobile_net_loss.h5',
+    checkpoint = ModelCheckpoint('all_imgs_mobile_net_loss.h5',
                                  monitor='val_loss',
                                  verbose=1,
                                  save_best_only=True,
                                  mode='min',
                                  period=1)
 
-    model.load_weights('./models/mobile_net_loss0_07.h5')
+    # model.load_weights('./models/mobile_net_loss0_07.h5')
 
-    tb_counter = len([log for log in os.listdir(os.path.expanduser('~/logs/')) if 'food' in log]) + 1
-    tensorboard = TensorBoard(log_dir=os.path.expanduser('~/logs/') + 'food' + '_' + str(tb_counter),
+    tb_counter = len([log for log in os.listdir(os.path.expanduser('./tf_logs/')) if 'food' in log]) + 1
+    tensorboard = TensorBoard(log_dir=os.path.expanduser('~/logs/') + 'all_imgs_mobile_net' + '_' + str(tb_counter),
                               histogram_freq=0,
                               write_graph=True,
                               write_images=False)
 
+    # TODO: try different optimizer and tweak parameters (in MNv1 paper they used RMSprop)
     optimizer = Adam(lr=1e-4, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.0)
     # optimizer = SGD(lr=1e-4, decay=0.0005, momentum=0.9)
     # optimizer = RMSprop(lr=1e-5, rho=0.9, epsilon=1e-08, decay=0.0)
@@ -91,31 +98,27 @@ def custom_loss(y_true, y_pred):
     seen = tf.Variable(0.)
     total_recall = tf.Variable(0.)
 
-    """
-    Adjust prediction
-    """
-    ### adjust x and y
+    """ Adjust prediction """
+    # adjust x and y
     pred_box_xy = tf.sigmoid(y_pred[..., :2]) + cell_grid
 
-    ### adjust w and h
+    # adjust w and h
     pred_box_wh = tf.exp(y_pred[..., 2:4]) * np.reshape(ANCHORS, [1, 1, 1, N_BOX, 2])
 
-    ### adjust confidence
+    # adjust confidence
     pred_box_conf = tf.sigmoid(y_pred[..., 4])
 
-    ### adjust class probabilities
+    # adjust class probabilities
     pred_box_class = y_pred[..., 5:]
 
-    """
-    Adjust ground truth
-    """
-    ### adjust x and y
+    """ Adjust ground truth """
+    # adjust x and y
     true_box_xy = y_true[..., 0:2]  # relative position to the containing cell
 
-    ### adjust w and h
+    # adjust w and h
     true_box_wh = y_true[..., 2:4]  # number of cells accross, horizontally and vertically
 
-    ### adjust confidence
+    # adjust confidence
     true_wh_half = true_box_wh / 2.
     true_mins = true_box_xy - true_wh_half
     true_maxes = true_box_xy + true_wh_half
@@ -137,16 +140,14 @@ def custom_loss(y_true, y_pred):
 
     true_box_conf = iou_scores * y_true[..., 4]
 
-    ### adjust class probabilities
+    # adjust class probabilities
     true_box_class = tf.argmax(y_true[..., 5:], -1)
 
-    """
-    Determine the masks
-    """
-    ### coordinate mask: simply the position of the ground truth boxes (the predictors)
+    """ Determine the masks """
+    # coordinate mask: simply the position of the ground truth boxes (the predictors)
     coord_mask = tf.expand_dims(y_true[..., 4], axis=-1) * COORD_SCALE
 
-    ### confidence mask: penelize predictors + penalize boxes with low IOU
+    # confidence mask: penelize predictors + penalize boxes with low IOU
     # penalize the confidence of the boxes, which have IOU with some ground truth box < 0.6
     true_xy = true_boxes[..., 0:2]
     true_wh = true_boxes[..., 2:4]
@@ -179,12 +180,10 @@ def custom_loss(y_true, y_pred):
     # penalize the confidence of the boxes, which are reponsible for corresponding ground truth box
     conf_mask = conf_mask + y_true[..., 4] * OBJECT_SCALE
 
-    ### class mask: simply the position of the ground truth boxes (the predictors)
+    # class mask: simply the position of the ground truth boxes (the predictors)
     class_mask = y_true[..., 4] * tf.gather(CLASS_WEIGHTS, true_box_class) * CLASS_SCALE
 
-    """
-    Warm-up training
-    """
+    """ Warm-up training """
     no_boxes_mask = tf.to_float(coord_mask < COORD_SCALE / 2.)
     seen = tf.assign_add(seen, 1.)
 
@@ -197,9 +196,7 @@ def custom_loss(y_true, y_pred):
                                                             true_box_wh,
                                                             coord_mask])
 
-    """
-    Finalize the loss
-    """
+    """ Finalize the loss """
     nb_coord_box = tf.reduce_sum(tf.to_float(coord_mask > 0.0))
     nb_conf_box = tf.reduce_sum(tf.to_float(conf_mask > 0.0))
     nb_class_box = tf.reduce_sum(tf.to_float(class_mask > 0.0))
@@ -215,13 +212,11 @@ def custom_loss(y_true, y_pred):
     nb_true_box = tf.reduce_sum(y_true[..., 4])
     nb_pred_box = tf.reduce_sum(tf.to_float(true_box_conf > 0.5) * tf.to_float(pred_box_conf > 0.3))
 
-    """
-    Debugging code
-    """
+    """ Debugging code """
     current_recall = nb_pred_box / (nb_true_box + 1e-6)
     total_recall = tf.assign_add(total_recall, current_recall)
 
-    loss = tf.Print(loss, [tf.zeros((1))], message='Dummy Line \t', summarize=1000)
+    loss = tf.Print(loss, [tf.zeros((1))], message='\nDummy Line \t', summarize=1000)
     loss = tf.Print(loss, [loss_xy], message='Loss XY \t', summarize=1000)
     loss = tf.Print(loss, [loss_wh], message='Loss WH \t', summarize=1000)
     loss = tf.Print(loss, [loss_conf], message='Loss Conf \t', summarize=1000)
@@ -233,13 +228,31 @@ def custom_loss(y_true, y_pred):
     return loss
 
 
+def read_category():
+    category = []
+    with open('/Volumes/JS/UECFOOD100_JS/category.txt', 'r') as file:
+        for i, line in enumerate(file):
+            if i > 0:
+                line = line.rstrip('\n')
+                line = line.split('\t')
+                category.append(line[1])
+    return category
+
+
+def plt_example_batch(batches, batch_size=16):
+    assert batches[0][0][0].shape[0] == batch_size       # in general 16x224x224x3
+    for i in range(0, batch_size):
+        img = batches[0][0][0][i]
+        plt.imshow(img.astype('uint8'))
+
+
 if __name__ == '__main__':
 
     ''' Initiailize parameters '''
-    LABELS = ['rice']
+    LABELS = read_category()
 
-    IMAGE_H, IMAGE_W = 224, 224  # must equal to GRID_H * 32
-    GRID_H, GRID_W = 7, 7  # 13, 13
+    IMAGE_H, IMAGE_W = 224, 224  # must equal to GRID_H * 32  416, 416
+    GRID_H, GRID_W = 7, 7        # 13, 13
     N_BOX = 5
     CLASS = len(LABELS)
     CLASS_WEIGHTS = np.ones(CLASS, dtype='float32')
@@ -276,19 +289,23 @@ if __name__ == '__main__':
         'TRUE_BOX_BUFFER': TRUE_BOX_BUFFER,
     }
 
-    image_path = '/Volumes/JS/UECFOOD100_JS/1/'
-    annot_path = '/Volumes/JS/UECxFOOD100_JS/1/annotations/'     # TODO: fix multi-object annotation!!
+    all_imgs = []
+    for i in range(0, len(LABELS)):
+        image_path = '/Volumes/JS/UECFOOD100_JS/' + str(i+1) + '/'
+        annot_path = '/Volumes/JS/UECFOOD100_JS/' + str(i+1) + '/' + '/annotations_new/'
 
-    all_imgs, seen_labels = parse_annotation(annot_path, image_path)
+        folder_imgs, seen_labels = parse_annotation(annot_path, image_path)
+        all_imgs.extend(folder_imgs)
+    print(np.array(all_imgs).shape)
 
     # add extensions to image name
     for img in all_imgs:
         img['filename'] = img['filename']
 
+    print('=> Generate BatchGenerator...')
     batches = BatchGenerator(all_imgs, generator_config)
 
-    image = batches[0][0][0][5]
-    plt.imshow(image.astype('uint8'))
+    plt_example_batch(batches, BATCH_SIZE)
 
     ''' Start training '''
     train_valid_split = int(0.8 * len(all_imgs))
@@ -299,4 +316,6 @@ if __name__ == '__main__':
     input_image = Input(shape=(IMAGE_H, IMAGE_W, 3))
     true_boxes = Input(shape=(1, 1, 1, TRUE_BOX_BUFFER, 4))
 
-    train()
+    model = get_model()
+
+    train(model)
