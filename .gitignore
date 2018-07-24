@@ -1,2 +1,6 @@
-.ipynb_checkpoints
-.UECFOOD100npv_JS.npz
+*.ipynb_checkpoints
+*.UECFOOD100npv_JS.npz
+*.jpg
+*.jpeg
+*.weights
+*.h5
