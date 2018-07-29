@@ -10,13 +10,13 @@ from utils.image import apply_random_scale_and_crop, random_distort_image, rando
 class BatchGenerator(Sequence):
     def __init__(self,
                  instances,
-                 anchors,
+                 anchors,   # for Feature Pyramid Networks we need 9 anchors, 3 for each scale
                  labels,
-                 downsample=32,  # ratio between network input's size and network output's size, 32 for YOLOv3
+                 downsample=32,  # ratio between network input's size and network output's size, 32 for YOLOv1-3
                  max_box_per_image=30,
                  batch_size=1,
-                 min_net_size=224,
-                 max_net_size=224,
+                 # min_net_size=224,
+                 # max_net_size=224,
                  shuffle=True,
                  jitter=True,
                  norm=None
@@ -26,8 +26,8 @@ class BatchGenerator(Sequence):
         self.labels = labels
         self.downsample = downsample
         self.max_box_per_image = max_box_per_image
-        self.min_net_size = (min_net_size // self.downsample) * self.downsample
-        self.max_net_size = (max_net_size // self.downsample) * self.downsample
+        # self.min_net_size = (min_net_size // self.downsample) * self.downsample
+        # self.max_net_size = (max_net_size // self.downsample) * self.downsample
         self.shuffle = shuffle
         self.jitter = jitter
         self.norm = norm
@@ -35,7 +35,7 @@ class BatchGenerator(Sequence):
         self.net_h = 224
         self.net_w = 224
 
-        ### augmentors by https://github.com/aleju/imgaug
+        # augmentors by https://github.com/aleju/imgaug
         sometimes = lambda aug: iaa.Sometimes(0.5, aug)
 
         # Define our sequence of augmentation steps that will be applied to every image
@@ -44,24 +44,12 @@ class BatchGenerator(Sequence):
         # _per channel_.
         self.aug_pipe = iaa.Sequential(
             [
-                # apply the following augmenters to most images
-                # iaa.Fliplr(0.5), # horizontally flip 50% of all images
-                # iaa.Flipud(0.2), # vertically flip 20% of all images
-                # sometimes(iaa.Crop(percent=(0, 0.1))), # crop images by 0-10% of their height/width
                 sometimes(iaa.Affine(
-                    # scale={"x": (0.8, 1.2), "y": (0.8, 1.2)}, # scale images to 80-120% of their size, individually per axis
-                    # translate_percent={"x": (-0.2, 0.2), "y": (-0.2, 0.2)}, # translate by -20 to +20 percent (per axis)
-                    # rotate=(-5, 5), # rotate by -45 to +45 degrees
-                    # shear=(-5, 5), # shear by -16 to +16 degrees
-                    # order=[0, 1], # use nearest neighbour or bilinear interpolation (fast)
-                    # cval=(0, 255), # if mode is constant, use a cval between 0 and 255
-                    # mode=ia.ALL # use any of scikit-image's warping modes (see 2nd image from the top for examples)
                 )),
                 # execute 0 to 5 of the following (less important) augmenters per image
                 # don't execute all of them, as that would often be way too strong
                 iaa.SomeOf((0, 5),
                            [
-                               # sometimes(iaa.Superpixels(p_replace=(0, 1.0), n_segments=(20, 200))), # convert images into their superpixel representation
                                iaa.OneOf([
                                    iaa.GaussianBlur((0, 3.0)),  # blur images with a sigma between 0 and 3.0
                                    iaa.AverageBlur(k=(2, 7)),
@@ -70,12 +58,6 @@ class BatchGenerator(Sequence):
                                    # blur image using local medians with kernel sizes between 2 and 7
                                ]),
                                iaa.Sharpen(alpha=(0, 1.0), lightness=(0.75, 1.5)),  # sharpen images
-                               # iaa.Emboss(alpha=(0, 1.0), strength=(0, 2.0)), # emboss images
-                               # search either for all edges or for directed edges
-                               # sometimes(iaa.OneOf([
-                               #    iaa.EdgeDetect(alpha=(0, 0.7)),
-                               #    iaa.DirectedEdgeDetect(alpha=(0, 0.7), direction=(0.0, 1.0)),
-                               # ])),
                                iaa.AdditiveGaussianNoise(loc=0, scale=(0.0, 0.05 * 255), per_channel=0.5),
                                # add gaussian noise to images
                                iaa.OneOf([
@@ -88,9 +70,6 @@ class BatchGenerator(Sequence):
                                iaa.Multiply((0.5, 1.5), per_channel=0.5),
                                # change brightness of images (50-150% of original value)
                                iaa.ContrastNormalization((0.5, 2.0), per_channel=0.5),  # improve or worsen the contrast
-                               # iaa.Grayscale(alpha=(0.0, 1.0)),
-                               # sometimes(iaa.ElasticTransformation(alpha=(0.5, 3.5), sigma=0.25)), # move pixels locally around (with random strengths)
-                               # sometimes(iaa.PiecewiseAffine(scale=(0.01, 0.05))) # sometimes move parts of the image around
                            ],
                            random_order=True
                            )
@@ -234,7 +213,8 @@ class BatchGenerator(Sequence):
         image_name = instance['filename']
         image = cv2.imread(image_name)  # RGB image
 
-        if image is None: print('Cannot find ', image_name)
+        if image is None:
+            print('Cannot find ', image_name)
         image = image[:, :, ::-1]  # RGB image
 
         image_h, image_w, _ = image.shape
@@ -300,7 +280,7 @@ class BatchGenerator(Sequence):
             if flip > 0.5:
                 image = cv2.flip(image, 1)
 
-            image = self.aug_pipe.augment_image(image)
+            # image = self.aug_pipe.augment_image(image)
 
             # resize the image to standard size
         image = cv2.resize(image, (self.net_h, self.net_w))

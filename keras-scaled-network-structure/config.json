@@ -2,13 +2,13 @@
     "model" : {
         "min_input_size":       224,
         "max_input_size":       224,
-        "anchors":              [55,69, 75,234, 133,240, 136,129, 142,363, 203,290, 228,184, 285,359, 341,260],
-        "labels":               ["kangaroo"]
+        "anchors":              [56,43, 90,85, 129,108, 156,139, 183,84, 189,156, 203,112, 216,136, 219,163],
+        "labels":               ""
     },
 
     "train": {
-        "train_image_folder":   "/Volumes/JS/UECFOOD100_JS/1/",
-        "train_annot_folder":   "/Volumes/JS/UECFOOD100_JS/1/annotations_new/",
+        "train_image_folder":   "/Volumes/JS/UECFOOD100_JS/",
+        "train_annot_folder":   "/Volumes/JS/UECFOOD100_JS/",
         "cache_name":           "",
 
         "train_times":          8,

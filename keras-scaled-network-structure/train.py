@@ -4,7 +4,6 @@ import argparse
 import json
 import os
 
-from preprocessing import OldBatchGenerator
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
@@ -20,48 +19,47 @@ from voc import parse_annotation
 from yolo import create_yolov3_model, dummy_loss
 
 
-def create_training_instances(
+def create_train_valid_set(
         train_annot_folder,
         train_image_folder,
         valid_annot_folder,
         valid_image_folder,
         labels,
 ):
-    # parse annotations of the training set
-    train_ints, train_labels = parse_annotation(train_annot_folder, train_image_folder, labels)
+    # parse annotations for all images
+    all_images = []
+    all_seen_labels = []
+    for i in range(0, len(labels)):
+        image_path = train_image_folder + str(i + 1) + '/'
+        annot_path = train_annot_folder + str(i + 1) + '/' + 'annotations_new/'
+
+        train_ints, seen_labels = parse_annotation(annot_path, image_path, labels)
+
+        all_images.extend(train_ints)
+        for seen_label, counts in seen_labels.items():
+            if seen_label not in all_seen_labels:
+                all_seen_labels.append(seen_label)
 
     # parse annotations of the validation set, if any, otherwise split the training set
     if os.path.exists(valid_annot_folder):
         valid_ints, valid_labels = parse_annotation(valid_annot_folder, valid_image_folder, labels)
     else:
         print("valid_annot_folder not exists. Spliting the trainining set.")
-
-        train_valid_split = int(0.8 * len(train_ints))
+        train_valid_split = int(0.8 * len(all_images))
         np.random.seed(0)
-        np.random.shuffle(train_ints)
+        np.random.shuffle(all_images)
         np.random.seed()
 
-        valid_ints = train_ints[train_valid_split:]
-        train_ints = train_ints[:train_valid_split]
+        valid_ints = all_images[train_valid_split:]
+        train_ints = all_images[:train_valid_split]
 
-    # compare the seen labels with the given labels in config.json
     if len(labels) > 0:
-        overlap_labels = set(labels).intersection(set(train_labels.keys()))
+        overlap_labels = set(labels).intersection(set(all_seen_labels))
+        if len(overlap_labels) == len(labels) == len(all_seen_labels):
+            print('All 100 categories appeared.\n')
 
-        print('Seen labels: \t' + str(train_labels) + '\n')
-        print('Given labels: \t' + str(labels))
-
-        # return None, None, None if some given label is not in the dataset
-        # if len(overlap_labels) < len(labels):
-        #     print('Some labels have no annotations! Please revise the list of labels in the config.json.')
-        #     return None, None, None
-    else:
-        print('No labels are provided. Train on all seen labels.')
-        print(train_labels)
-        labels = train_labels.keys()
-
-    # max_box_per_image = max([len(inst['object']) for inst in (train_ints + valid_ints)])
-    max_box_per_image = 12
+    max_box_per_image = max([len(inst['object']) for inst in (train_ints + valid_ints)])
+    print('Maximum box number per image: ' + str(max_box_per_image) + '\n')
 
     return train_ints, valid_ints, sorted(labels), max_box_per_image
 
@@ -187,47 +185,17 @@ def _main_():
     with open(config_path) as config_buffer:
         config = json.loads(config_buffer.read())
 
-    ###############################
-    #   Parse the annotations 
-    ###############################
+    ''' Parse annotations '''
     config['model']['labels'] = LABELS
-    train_ints, valid_ints, labels, max_box_per_image = create_training_instances(
+    train_ints, valid_ints, labels, max_box_per_image = create_train_valid_set(
         config['train']['train_annot_folder'],
         config['train']['train_image_folder'],
         config['valid']['valid_annot_folder'],
         config['valid']['valid_image_folder'],
         config['model']['labels']
     )
-    print('\nTraining on: \t' + str(labels) + '\n')
 
-    IMAGE_H, IMAGE_W = 224, 224  # must equal to GRID_H * 32  416, 416
-    GRID_H, GRID_W = 7, 7  # 13, 13
-    N_BOX = 9
-    BATCH_SIZE = 16
-    TRUE_BOX_BUFFER = 50
-
-    generator_config = {
-        'IMAGE_H': IMAGE_H,
-        'IMAGE_W': IMAGE_W,
-        'GRID_H': GRID_H,
-        'GRID_W': GRID_W,
-        'BOX': N_BOX,
-        'LABELS': LABELS,
-        'CLASS': len(LABELS),
-        'ANCHORS': config['model']['anchors'],
-        'BATCH_SIZE': BATCH_SIZE,
-        'TRUE_BOX_BUFFER': TRUE_BOX_BUFFER,
-    }
-
-    # batches = OldBatchGenerator(train_ints, generator_config)
-    # train_batch = OldBatchGenerator(train_ints, generator_config)
-    # valid_batch = OldBatchGenerator(valid_ints, generator_config, norm=normalize)
-    # img = train_batch[0][0][0][7]
-    # plt.imshow(img.astype('uint8'))
-
-    ###############################
-    #   Create the generators 
-    ###############################
+    ''' Create generators '''
     train_generator = BatchGenerator(
         instances=train_ints,
         anchors=config['model']['anchors'],
@@ -235,13 +203,14 @@ def _main_():
         downsample=32,  # ratio between network input's size and network output's size, 32 for YOLOv3
         max_box_per_image=max_box_per_image,
         batch_size=config['train']['batch_size'],
-        min_net_size=config['model']['min_input_size'],
-        max_net_size=config['model']['max_input_size'],
+        # min_net_size=config['model']['min_input_size'],
+        # max_net_size=config['model']['max_input_size'],
         shuffle=True,
         jitter=True,
         # norm=normalize
     )
 
+    # used to check if images are normal after BatchGenerator
     img = train_generator[0][0][0][5]
     plt.imshow(img.astype('uint8'))
 
@@ -252,16 +221,14 @@ def _main_():
         downsample=32,  # ratio between network input's size and network output's size, 32 for YOLOv3
         max_box_per_image=max_box_per_image,
         batch_size=config['train']['batch_size'],
-        min_net_size=config['model']['min_input_size'],
-        max_net_size=config['model']['max_input_size'],
+        # min_net_size=config['model']['min_input_size'],
+        # max_net_size=config['model']['max_input_size'],
         shuffle=True,
-        jitter=True,
+        jitter=False,
         # norm=normalize
     )
 
-    ###############################
-    #   Create the model 
-    ###############################
+    ''' Create the model '''
     if os.path.exists(config['train']['saved_weights_name']):
         config['train']['warmup_epochs'] = 0
     warmup_batches = config['train']['warmup_epochs'] * (config['train']['train_times'] * len(train_generator))
@@ -287,9 +254,7 @@ def _main_():
         class_scale=config['train']['class_scale'],
     )
 
-    ###############################
-    #   Kick off the training
-    ###############################
+    ''' Kick off the training '''
     callbacks = create_callbacks(config['train']['saved_weights_name'], config['train']['tensorboard_dir'], infer_model)
     train_model.fit_generator(
         generator=train_generator,
@@ -305,9 +270,7 @@ def _main_():
     if multi_gpu > 1:
         infer_model = load_model(config['train']['saved_weights_name'])
 
-    ###############################
-    #   Run the evaluation
-    ###############################
+    ''' Evaluate the result '''
     # compute mAP for all the classes
     average_precisions = evaluate(infer_model, valid_generator)
 
