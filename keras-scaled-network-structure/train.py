@@ -4,6 +4,8 @@ import argparse
 import json
 import os
 
+from preprocessing import OldBatchGenerator
+import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 from keras.callbacks import EarlyStopping, ReduceLROnPlateau
@@ -14,25 +16,23 @@ from callbacks import CustomModelCheckpoint, CustomTensorBoard
 from generator import BatchGenerator
 from utils.multi_gpu_model import multi_gpu_model
 from utils.utils import normalize, evaluate, makedirs
-from voc import parse_voc_annotation
+from voc import parse_annotation
 from yolo import create_yolov3_model, dummy_loss
 
 
 def create_training_instances(
         train_annot_folder,
         train_image_folder,
-        train_cache,
         valid_annot_folder,
         valid_image_folder,
-        valid_cache,
         labels,
 ):
     # parse annotations of the training set
-    train_ints, train_labels = parse_voc_annotation(train_annot_folder, train_image_folder, train_cache, labels)
+    train_ints, train_labels = parse_annotation(train_annot_folder, train_image_folder, labels)
 
     # parse annotations of the validation set, if any, otherwise split the training set
     if os.path.exists(valid_annot_folder):
-        valid_ints, valid_labels = parse_voc_annotation(valid_annot_folder, valid_image_folder, valid_cache, labels)
+        valid_ints, valid_labels = parse_annotation(valid_annot_folder, valid_image_folder, labels)
     else:
         print("valid_annot_folder not exists. Spliting the trainining set.")
 
@@ -151,7 +151,7 @@ def create_model(
             class_scale=class_scale
         )
 
-        # load the pretrained weight if exists, otherwise load the backend weight only
+    # load the pretrained weight if exists, otherwise load the backend weight only
     # if os.path.exists(saved_weights_name):
     #     print("\nLoading pretrained weights.\n")
     #     template_model.load_weights(saved_weights_name)
@@ -180,8 +180,7 @@ def read_category():
     return category
 
 
-def _main_(args):
-    # config_path = args.conf
+def _main_():
     config_path = './config.json'
     LABELS = read_category()
 
@@ -195,18 +194,40 @@ def _main_(args):
     train_ints, valid_ints, labels, max_box_per_image = create_training_instances(
         config['train']['train_annot_folder'],
         config['train']['train_image_folder'],
-        config['train']['cache_name'],
         config['valid']['valid_annot_folder'],
         config['valid']['valid_image_folder'],
-        config['valid']['cache_name'],
         config['model']['labels']
     )
     print('\nTraining on: \t' + str(labels) + '\n')
 
+    IMAGE_H, IMAGE_W = 224, 224  # must equal to GRID_H * 32  416, 416
+    GRID_H, GRID_W = 7, 7  # 13, 13
+    N_BOX = 9
+    BATCH_SIZE = 16
+    TRUE_BOX_BUFFER = 50
+
+    generator_config = {
+        'IMAGE_H': IMAGE_H,
+        'IMAGE_W': IMAGE_W,
+        'GRID_H': GRID_H,
+        'GRID_W': GRID_W,
+        'BOX': N_BOX,
+        'LABELS': LABELS,
+        'CLASS': len(LABELS),
+        'ANCHORS': config['model']['anchors'],
+        'BATCH_SIZE': BATCH_SIZE,
+        'TRUE_BOX_BUFFER': TRUE_BOX_BUFFER,
+    }
+
+    # batches = OldBatchGenerator(train_ints, generator_config)
+    # train_batch = OldBatchGenerator(train_ints, generator_config)
+    # valid_batch = OldBatchGenerator(valid_ints, generator_config, norm=normalize)
+    # img = train_batch[0][0][0][7]
+    # plt.imshow(img.astype('uint8'))
+
     ###############################
     #   Create the generators 
     ###############################
-
     train_generator = BatchGenerator(
         instances=train_ints,
         anchors=config['model']['anchors'],
@@ -217,9 +238,12 @@ def _main_(args):
         min_net_size=config['model']['min_input_size'],
         max_net_size=config['model']['max_input_size'],
         shuffle=True,
-        jitter=0.3,
-        norm=normalize
+        jitter=True,
+        # norm=normalize
     )
+
+    img = train_generator[0][0][0][5]
+    plt.imshow(img.astype('uint8'))
 
     valid_generator = BatchGenerator(
         instances=valid_ints,
@@ -231,8 +255,8 @@ def _main_(args):
         min_net_size=config['model']['min_input_size'],
         max_net_size=config['model']['max_input_size'],
         shuffle=True,
-        jitter=0.0,
-        norm=normalize
+        jitter=True,
+        # norm=normalize
     )
 
     ###############################
@@ -267,7 +291,6 @@ def _main_(args):
     #   Kick off the training
     ###############################
     callbacks = create_callbacks(config['train']['saved_weights_name'], config['train']['tensorboard_dir'], infer_model)
-
     train_model.fit_generator(
         generator=train_generator,
         steps_per_epoch=len(train_generator) * config['train']['train_times'],
@@ -285,7 +308,6 @@ def _main_(args):
     ###############################
     #   Run the evaluation
     ###############################
-
     # compute mAP for all the classes
     average_precisions = evaluate(infer_model, valid_generator)
 
@@ -296,8 +318,4 @@ def _main_(args):
 
 
 if __name__ == '__main__':
-    argparser = argparse.ArgumentParser(description='train and evaluate YOLO_v3 model on any dataset')
-    argparser.add_argument('-c', '--conf', help='path to configuration file')
-
-    args = argparser.parse_args()
-    _main_(args)
+    _main_()

@@ -65,6 +65,7 @@ def random_distort_image(image, hue=18, saturation=1.5, exposure=1.5):
     # convert back to RGB from HSV
     return cv2.cvtColor(image.astype('uint8'), cv2.COLOR_HSV2RGB)
 
+
 def apply_random_scale_and_crop(image, new_w, new_h, net_w, net_h, dx, dy):
     im_sized = cv2.resize(image, (new_w, new_h))
     

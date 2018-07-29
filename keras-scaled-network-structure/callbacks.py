@@ -1,6 +1,8 @@
 from keras.callbacks import TensorBoard, ModelCheckpoint
 import tensorflow as tf
 import numpy as np
+import warnings
+
 
 class CustomTensorBoard(TensorBoard):
     """ to log the loss after each batch
@@ -24,6 +26,7 @@ class CustomTensorBoard(TensorBoard):
             self.writer.flush()
         
         super(CustomTensorBoard, self).on_batch_end(batch, logs)
+
 
 class CustomModelCheckpoint(ModelCheckpoint):
     """ to save the template model, not the multi-GPU model
