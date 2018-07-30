@@ -14,9 +14,8 @@ from keras.optimizers import Adam
 from callbacks import CustomModelCheckpoint, CustomTensorBoard
 from generator import BatchGenerator
 from utils.multi_gpu_model import multi_gpu_model
-from utils.utils import normalize, evaluate, makedirs
-from voc import parse_annotation
-from yolo import create_yolov3_model, dummy_loss
+from utils.utils import normalize, evaluate, makedirs, parse_annotation
+from scaled_mobilenet import create_scaled_mobilenet_model, dummy_loss
 
 
 def create_train_valid_set(
@@ -119,7 +118,7 @@ def create_model(
 ):
     if multi_gpu > 1:
         with tf.device('/cpu:0'):
-            template_model, infer_model = create_yolov3_model(
+            template_model, infer_model = create_scaled_mobilenet_model(
                 nb_class=nb_class,
                 anchors=anchors,
                 max_box_per_image=max_box_per_image,
@@ -134,7 +133,7 @@ def create_model(
                 class_scale=class_scale
             )
     else:
-        template_model, infer_model = create_yolov3_model(
+        template_model, infer_model = create_scaled_mobilenet_model(
             nb_class=nb_class,
             anchors=anchors,
             max_box_per_image=max_box_per_image,
@@ -178,7 +177,7 @@ def read_category():
     return category
 
 
-def _main_():
+def _main():
     config_path = './config.json'
     LABELS = read_category()
 
@@ -196,6 +195,18 @@ def _main_():
     )
 
     ''' Create generators '''
+    # check if images are normal after BatchGenerator
+    batches = BatchGenerator(np.append(train_ints, valid_ints),
+                             anchors=config['model']['anchors'],
+                             labels=labels,
+                             downsample=32,
+                             max_box_per_image=max_box_per_image,
+                             batch_size=config['train']['batch_size'],
+                             shuffle=False,
+                             jitter=False)
+    img = batches[0][0][0][5]
+    # plt.imshow(img.astype('uint8'))
+
     train_generator = BatchGenerator(
         instances=train_ints,
         anchors=config['model']['anchors'],
@@ -206,13 +217,9 @@ def _main_():
         # min_net_size=config['model']['min_input_size'],
         # max_net_size=config['model']['max_input_size'],
         shuffle=True,
-        jitter=True,
-        # norm=normalize
+        jitter=True,  # add 10% noise for each image for training
+        norm=normalize
     )
-
-    # used to check if images are normal after BatchGenerator
-    img = train_generator[0][0][0][5]
-    plt.imshow(img.astype('uint8'))
 
     valid_generator = BatchGenerator(
         instances=valid_ints,
@@ -225,7 +232,7 @@ def _main_():
         # max_net_size=config['model']['max_input_size'],
         shuffle=True,
         jitter=False,
-        # norm=normalize
+        norm=normalize
     )
 
     ''' Create the model '''
@@ -254,6 +261,11 @@ def _main_():
         class_scale=config['train']['class_scale'],
     )
 
+    print('\ntrain_model: \n')
+    print(train_model.summary())
+    print('\ninfer_model: \n')
+    print(infer_model.summary())
+
     ''' Kick off the training '''
     callbacks = create_callbacks(config['train']['saved_weights_name'], config['train']['tensorboard_dir'], infer_model)
     train_model.fit_generator(
@@ -281,4 +293,4 @@ def _main_():
 
 
 if __name__ == '__main__':
-    _main_()
+    _main()

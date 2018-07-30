@@ -84,7 +84,7 @@ class BatchGenerator(Sequence):
         return int(np.ceil(float(len(self.instances)) / self.batch_size))
 
     def __getitem__(self, idx):
-        # get image input size, change every 10 batches
+        # get image input size, change every 10 batches (I didn't do this)
         # net_h, net_w = self._get_net_size(idx)
         net_h, net_w = self.net_h, self.net_w
         base_grid_h, base_grid_w = net_h // self.downsample, net_w // self.downsample
@@ -116,7 +116,7 @@ class BatchGenerator(Sequence):
         instance_count = 0
         true_box_index = 0
 
-        # do the logic to fill in the inputs and the output
+        # do the logic to fill in input and output
         for train_instance in self.instances[l_bound:r_bound]:
             # augment input image and fix object's position and size
             # img, all_objs = self._aug_image(train_instance, net_h, net_w)
@@ -262,12 +262,12 @@ class BatchGenerator(Sequence):
         h, w, c = image.shape
         all_objs = copy.deepcopy(train_instance['object'])
 
-        if jitter:
-            ### scale the image
+        if jitter:   # by default jitter=0.1
+            # scale the image
             scale = np.random.uniform() / 10. + 1.
             image = cv2.resize(image, (0, 0), fx=scale, fy=scale)
 
-            ### translate the image
+            # translate the image
             max_offx = (scale - 1.) * w
             max_offy = (scale - 1.) * h
             offx = int(np.random.uniform() * max_offx)
@@ -275,14 +275,14 @@ class BatchGenerator(Sequence):
 
             image = image[offy: (offy + h), offx: (offx + w)]
 
-            ### flip the image
+            # flip the image with 50% chance
             flip = np.random.binomial(1, .5)
             if flip > 0.5:
                 image = cv2.flip(image, 1)
 
             # image = self.aug_pipe.augment_image(image)
 
-            # resize the image to standard size
+        # resize the image to standard size
         image = cv2.resize(image, (self.net_h, self.net_w))
         image = image[:, :, ::-1]
 

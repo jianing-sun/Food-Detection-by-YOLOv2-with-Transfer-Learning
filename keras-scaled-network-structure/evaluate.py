@@ -4,13 +4,14 @@ import argparse
 import os
 import numpy as np
 import json
-from voc import parse_voc_annotation
-from yolo import create_yolov3_model
+from utils.utils import parse_annotation
+from scaled_mobilenet import create_scaled_mobilenet_model
 from generator import BatchGenerator
 from utils.utils import normalize, evaluate
 from keras.callbacks import EarlyStopping, ModelCheckpoint
 from keras.optimizers import Adam
 from keras.models import load_model
+
 
 def _main_(args):
     config_path = args.conf
@@ -21,10 +22,9 @@ def _main_(args):
     ###############################
     #   Create the validation generator
     ###############################  
-    valid_ints, labels = parse_voc_annotation(
+    valid_ints, labels = parse_annotation(
         config['valid']['valid_annot_folder'], 
-        config['valid']['valid_image_folder'], 
-        config['valid']['cache_name'],
+        config['valid']['valid_image_folder'],
         config['model']['labels']
     )
 
