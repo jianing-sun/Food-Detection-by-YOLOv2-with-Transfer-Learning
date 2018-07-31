@@ -128,6 +128,7 @@ class BatchGenerator(Sequence):
                 max_index = -1
                 max_iou = -1
 
+                # ground truth bbox
                 shifted_box = BoundBox(0,
                                        0,
                                        obj['xmax'] - obj['xmin'],
@@ -142,11 +143,11 @@ class BatchGenerator(Sequence):
                         max_index = i
                         max_iou = iou
 
-                        # determine the yolo to be responsible for this bounding box
-                yolo = yolos[max_index // 3]
+                # determine the yolo to be responsible for this bounding box
+                yolo = yolos[max_index // 3]   # find the group of yolo
                 grid_h, grid_w = yolo.shape[1:3]
 
-                # determine the position of the bounding box on the grid
+                # select the bbox of the 7x7 grid based on the location of the center of object
                 center_x = .5 * (obj['xmin'] + obj['xmax'])
                 center_x = center_x / float(net_w) * grid_w  # sigma(t_x) + c_x
                 center_y = .5 * (obj['ymin'] + obj['ymax'])
@@ -166,10 +167,10 @@ class BatchGenerator(Sequence):
                 grid_y = int(np.floor(center_y))
 
                 # assign ground truth x, y, w, h, confidence and class probs to y_batch
-                yolo[instance_count, grid_y, grid_x, max_index % 3] = 0
-                yolo[instance_count, grid_y, grid_x, max_index % 3, 0:4] = box
-                yolo[instance_count, grid_y, grid_x, max_index % 3, 4] = 1.
-                yolo[instance_count, grid_y, grid_x, max_index % 3, 5 + obj_indx] = 1
+                yolo[instance_count, grid_y, grid_x, max_index % 3] = 0    # initialize with all zero
+                yolo[instance_count, grid_y, grid_x, max_index % 3, 0:4] = box  # 0:3 bbox
+                yolo[instance_count, grid_y, grid_x, max_index % 3, 4] = 1.     # confidence of an object
+                yolo[instance_count, grid_y, grid_x, max_index % 3, 5 + obj_indx] = 1   # class prob
 
                 # assign the true box to t_batch
                 true_box = [center_x, center_y, obj['xmax'] - obj['xmin'], obj['ymax'] - obj['ymin']]
@@ -188,7 +189,8 @@ class BatchGenerator(Sequence):
                     # cv2.rectangle(img, (obj['xmin'], obj['ymin']), (obj['xmax'], obj['ymax']), (255, 0, 0), 1)
                     cv2.rectangle(img[:, :, ::-1], (obj['xmin'], obj['ymin']), (obj['xmax'], obj['ymax']),
                                   (255, 0, 0), 2)
-                    # cv2.rectangle(img, (obj['xmin'] + 2, obj['ymax'] - 12), (obj['xmax'], obj['ymax']), (0, 0, 255), thickness=-1)
+                    # cv2.rectangle(img, (obj['xmin'] + 2, obj['ymax'] - 12), (obj['xmax'], obj['ymax']),
+                    # (0, 0, 255), thickness=-1)
                     cv2.putText(img[:, :, ::-1], obj['name'],
                                 (obj['xmin'] + 2, obj['ymin'] + 12),
                                 font, 1.2e-3 * img.shape[0],

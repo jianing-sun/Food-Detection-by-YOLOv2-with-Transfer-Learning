@@ -1,8 +1,8 @@
 import keras.backend as K
 import tensorflow as tf
 from keras.engine.topology import Layer
-from keras.layers import Conv2D, Input, BatchNormalization, LeakyReLU, ZeroPadding2D, \
-    UpSampling2D, DepthwiseConv2D, Activation
+from keras.layers import Conv2D, Input, BatchNormalization, ZeroPadding2D, \
+    UpSampling2D, DepthwiseConv2D, Activation, concatenate
 from keras.layers.merge import add
 from keras.models import Model
 
@@ -186,7 +186,7 @@ class YoloLayer(Layer):
 
         loss = loss_xy + loss_wh + loss_conf + loss_class
 
-        loss = tf.Print(loss, [grid_h, avg_obj], message='avg_obj \t\t', summarize=1000)
+        loss = tf.Print(loss, [grid_h, avg_obj], message='\navg_obj \t\t', summarize=1000)
         loss = tf.Print(loss, [grid_h, avg_noobj], message='avg_noobj \t\t', summarize=1000)
         loss = tf.Print(loss, [grid_h, avg_iou], message='avg_iou \t\t', summarize=1000)
         loss = tf.Print(loss, [grid_h, avg_cat], message='avg_cat \t\t', summarize=1000)
@@ -218,7 +218,7 @@ def create_scaled_mobilenet_model(
         xywh_scale,
         class_scale
 ):
-    input_image = Input(shape=(None, None, 3))  # net_h, net_w, 3
+    input_image = Input(shape=(224, 224, 3))  # net_h, net_w, 3
     true_boxes = Input(shape=(1, 1, 1, max_box_per_image, 4))
     true_yolo_1 = Input(
         shape=(None, None, len(anchors) // 6, 4 + 1 + nb_class))  # grid_h, grid_w, nb_anchor, 5+nb_class
@@ -247,13 +247,15 @@ def create_scaled_mobilenet_model(
     x = depthwise_separable_conv_block(x, dw_stride=(1, 1), pw_num_filter=256, id=10)
 
     # Conv dw / s2: filter shape (3 x 3 x 256 dw)   Conv pw / s1: filter shape (1 x 1 x 256 x 512)
+    skip_28 = x
     x = depthwise_separable_conv_block(x, dw_stride=(2, 2), pw_num_filter=512, id=12)
+    skip_14 = x
     x = depthwise_separable_conv_block(x, dw_stride=(2, 2), pw_num_filter=512, id=14)
 
-    # layer 16-18
+    # layer 16-18  x: 14x14
     pred_yolo_1 = depthwise_conv_block(x, [
-        {'filter': 512, 'kernel': 3, 'stride': 1, 'bnorm': True, 'leaky': True, 'layer_idx': 16},
-        {'filter': (3 * (5 + nb_class)), 'kernel': 1, 'stride': 1, 'bnorm': False, 'leaky': False, 'layer_idx': 17}])
+        {'filter': 512, 'kernel': 3, 'stride': 1, 'bnorm': True, 'relu6': True, 'layer_idx': 16},
+        {'filter': (3 * (5 + nb_class)), 'kernel': 1, 'stride': 1, 'bnorm': False, 'relu6': False, 'layer_idx': 17}])
 
     loss_yolo_1 = YoloLayer(anchors[12:],
                             [1 * num for num in max_grid],
@@ -266,20 +268,22 @@ def create_scaled_mobilenet_model(
                             xywh_scale,
                             class_scale)([input_image, pred_yolo_1, true_yolo_1, true_boxes])
 
-    # layer 19
+    # layer 19-21
+    x = depthwise_separable_conv_block(x, dw_stride=(1, 1), pw_num_filter=512, id=19)
     x = UpSampling2D(2)(x)
+    x = concatenate([x, skip_14])
 
-    # layer 20-25
+    # layer 22-27
     # repeat 5 times
-    x = depthwise_separable_conv_block(x, dw_stride=(1, 1), pw_num_filter=512, id=20)
     x = depthwise_separable_conv_block(x, dw_stride=(1, 1), pw_num_filter=512, id=22)
     x = depthwise_separable_conv_block(x, dw_stride=(1, 1), pw_num_filter=512, id=24)
+    x = depthwise_separable_conv_block(x, dw_stride=(1, 1), pw_num_filter=512, id=26)
 
-    # layer 26-28
+    # layer 28-30
     pred_yolo_2 = depthwise_conv_block(x,
-                              [{'filter': 256, 'kernel': 3, 'stride': 1, 'bnorm': True, 'leaky': True, 'layer_idx': 26},
+                              [{'filter': 256, 'kernel': 3, 'stride': 1, 'bnorm': True, 'relu6': True, 'layer_idx': 28},
                                {'filter': (3 * (5 + nb_class)), 'kernel': 1, 'stride': 1, 'bnorm': False,
-                                'leaky': False, 'layer_idx': 27}])
+                                'relu6': False, 'layer_idx': 29}])
     loss_yolo_2 = YoloLayer(anchors[6:12],
                             [2 * num for num in max_grid],
                             batch_size,
@@ -290,24 +294,26 @@ def create_scaled_mobilenet_model(
                             noobj_scale,
                             xywh_scale,
                             class_scale)([input_image, pred_yolo_2, true_yolo_2, true_boxes])
-    # layer 29
+    # layer 31-33
+    x = depthwise_separable_conv_block(x, dw_stride=(1, 1), pw_num_filter=512, id=31)
     x = UpSampling2D(2)(x)
+    x = concatenate([x, skip_28])
 
-    # layer 30-37
-    x = depthwise_separable_conv_block(x, dw_stride=(1, 1), pw_num_filter=512, id=30)
-    x = depthwise_separable_conv_block(x, dw_stride=(1, 1), pw_num_filter=512, id=32)
+    # layer 34-41
+    x = depthwise_separable_conv_block(x, dw_stride=(1, 1), pw_num_filter=512, id=34)
+    x = depthwise_separable_conv_block(x, dw_stride=(1, 1), pw_num_filter=512, id=36)
 
     # Conv dw / s2: filter shape (3 x 3 x 512 dw)   Conv pw / s1: filter shape (1 x 1 x 512 x 1024)
-    x = depthwise_separable_conv_block(x, dw_stride=(1, 1), pw_num_filter=1024, id=34)  # stride 2 -> 1
+    x = depthwise_separable_conv_block(x, dw_stride=(1, 1), pw_num_filter=256, id=38)  # stride 2 -> 1
 
     # Conv dw / s2: filter shape (3 x 3 x 1024 dw)  Conv pw / s1: filter shape (1 x 1 x 1024 x 1024)
-    x = depthwise_separable_conv_block(x, dw_stride=(1, 1), pw_num_filter=1024, id=36)
+    x = depthwise_separable_conv_block(x, dw_stride=(1, 1), pw_num_filter=256, id=40)
 
-    # layer 38-40
+    # layer 41-43
     pred_yolo_3 = depthwise_conv_block(x, [
-        {'filter': 256, 'kernel': 3, 'stride': 1, 'bnorm': True, 'leaky': True, 'layer_idx': 38},
+        {'filter': 128, 'kernel': 3, 'stride': 1, 'bnorm': True, 'relu6': True, 'layer_idx': 38},
         {'filter': (3 * (5 + nb_class)), 'kernel': 1, 'stride': 1, 'bnorm': False,
-         'leaky': False, 'layer_idx': 39}])
+         'relu6': False, 'layer_idx': 39}])
     loss_yolo_3 = YoloLayer(anchors[:6],
                             [4 * num for num in max_grid],
                             batch_size,
@@ -346,8 +352,8 @@ def _conv_block(inp, convs, do_skip=True):
                    use_bias=False if conv['bnorm'] else True)(x)
         if conv['bnorm']:
             x = BatchNormalization(epsilon=0.001, name='bnorm_' + str(conv['layer_idx']))(x)
-        if conv['leaky']:
-            x = LeakyReLU(alpha=0.1, name='leaky_' + str(conv['layer_idx']))(x)
+        if conv['relu6']:
+            x = Activation(relu6, name='relu6_' + str(conv['layer_idx']))(x)
 
     return add([skip_connection, x]) if do_skip else x
 
@@ -366,8 +372,8 @@ def depthwise_conv_block(inputs, convs):
                             use_bias=False, name='yolo_dw_conv_%d' % conv['layer_idx'])(x)
         if conv['bnorm']:
             x = BatchNormalization(epsilon=0.001, name='yolo_dw_bnorm_' + str(conv['layer_idx']))(x)
-        if conv['leaky']:
-            x = LeakyReLU(alpha=0.1, name='yolo_dw_leaky_' + str(conv['layer_idx']))(x)
+        if conv['relu6']:
+            x = Activation(relu6, name='yolo_dw_relu6_' + str(conv['layer_idx']))(x)
 
         # pointwise convolution layer
         x = Conv2D(filters=conv['filter'],
@@ -375,8 +381,8 @@ def depthwise_conv_block(inputs, convs):
                    kernel_size=(1, 1), strides=(1, 1), use_bias=False,
                    name='yolo_pw_conv_%d' % conv['layer_idx'])(x)
         x = BatchNormalization(axis=-1, name='yolo_pw_bn_%d' % conv['layer_idx'])(x)
-        if conv['leaky']:  # alpha: negative slope coefficient
-            x = LeakyReLU(alpha=0.1, name='yolo_pw_leaky_' + str(conv['layer_idx']))(x)
+        if conv['relu6']:  # alpha: negative slope coefficient
+            x = Activation(relu6, name='yolo_pw_relu6_' + str(conv['layer_idx']))(x)
 
     return x
 

@@ -60,7 +60,7 @@ def create_train_valid_set(
     max_box_per_image = max([len(inst['object']) for inst in (train_ints + valid_ints)])
     print('Maximum box number per image: ' + str(max_box_per_image) + '\n')
 
-    return train_ints, valid_ints, sorted(labels), max_box_per_image
+    return train_ints, valid_ints, labels, max_box_per_image
 
 
 def create_callbacks(saved_weights_name, tensorboard_logs, model_to_save):
@@ -196,7 +196,7 @@ def _main():
 
     ''' Create generators '''
     # check if images are normal after BatchGenerator
-    batches = BatchGenerator(np.append(train_ints, valid_ints),
+    batches = BatchGenerator(instances=np.append(train_ints, valid_ints),
                              anchors=config['model']['anchors'],
                              labels=labels,
                              downsample=32,
@@ -220,6 +220,9 @@ def _main():
         jitter=True,  # add 10% noise for each image for training
         norm=normalize
     )
+
+    img = train_generator[0][0][0][5]
+    # plt.imshow(img.astype('float'))
 
     valid_generator = BatchGenerator(
         instances=valid_ints,
@@ -270,11 +273,11 @@ def _main():
     callbacks = create_callbacks(config['train']['saved_weights_name'], config['train']['tensorboard_dir'], infer_model)
     train_model.fit_generator(
         generator=train_generator,
-        steps_per_epoch=len(train_generator) * config['train']['train_times'],
+        steps_per_epoch=len(train_generator),   # * config['train']['train_times'],
         epochs=config['train']['nb_epochs'] + config['train']['warmup_epochs'],
         verbose=2 if config['train']['debug'] else 1,
         callbacks=callbacks,
-        workers=4,
+        # workers=4,
         max_queue_size=8
     )
 

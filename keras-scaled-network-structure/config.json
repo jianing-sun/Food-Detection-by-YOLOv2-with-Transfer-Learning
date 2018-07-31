@@ -26,8 +26,8 @@
         "class_scale":          1,
 
         "tensorboard_dir":      "./tf/logs",
-        "saved_weights_name":   "",
-        "debug":                true
+        "saved_weights_name":   "my_net_0730",
+        "debug":                false
     },
 
     "valid": {
