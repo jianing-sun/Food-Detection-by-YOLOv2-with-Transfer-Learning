@@ -166,6 +166,10 @@ class BatchGenerator(Sequence):
                 grid_x = int(np.floor(center_x))
                 grid_y = int(np.floor(center_y))
 
+                grid_y = max(min(grid_y, 27), 0)
+                grid_x = max(min(grid_x, 27), 0)
+                # print(grid_y, grid_x)
+
                 # assign ground truth x, y, w, h, confidence and class probs to y_batch
                 yolo[instance_count, grid_y, grid_x, max_index % 3] = 0    # initialize with all zero
                 yolo[instance_count, grid_y, grid_x, max_index % 3, 0:4] = box  # 0:3 bbox
@@ -187,7 +191,14 @@ class BatchGenerator(Sequence):
                 for obj in all_objs:
                     font = cv2.FONT_HERSHEY_SIMPLEX  # use default font
                     # cv2.rectangle(img, (obj['xmin'], obj['ymin']), (obj['xmax'], obj['ymax']), (255, 0, 0), 1)
+                    center_x = .5 * (obj['xmin'] + obj['xmax'])
+                    center_x = center_x / float(net_w) * grid_w  # sigma(t_x) + c_x
+                    center_y = .5 * (obj['ymin'] + obj['ymax'])
+                    center_y = center_y / float(net_h) * grid_h  # sigma(t_y) +
+                    center_x, center_y = int(np.floor(center_x)), int(np.floor(center_y))
                     cv2.rectangle(img[:, :, ::-1], (obj['xmin'], obj['ymin']), (obj['xmax'], obj['ymax']),
+                                  (255, 0, 0), 2)
+                    cv2.rectangle(img[:, :, ::-1], (center_x, center_y), (center_x, center_y),
                                   (255, 0, 0), 2)
                     # cv2.rectangle(img, (obj['xmin'] + 2, obj['ymax'] - 12), (obj['xmax'], obj['ymax']),
                     # (0, 0, 255), thickness=-1)

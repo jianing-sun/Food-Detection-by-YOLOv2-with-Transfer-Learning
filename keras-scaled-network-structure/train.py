@@ -149,9 +149,9 @@ def create_model(
         )
 
     # load the pretrained weight if exists, otherwise load the backend weight only
-    # if os.path.exists(saved_weights_name):
-    #     print("\nLoading pretrained weights.\n")
-    #     template_model.load_weights(saved_weights_name)
+    if os.path.exists(saved_weights_name):
+        print("\nLoading pretrained weights.\n")
+        template_model.load_weights(saved_weights_name)
     # else:
     #     template_model.load_weights("backend.h5", by_name=True)
 
@@ -168,7 +168,7 @@ def create_model(
 
 def read_category():
     category = []
-    with open('/Volumes/JS/UECFOOD100_JS/category.txt', 'r') as file:
+    with open('../UECFOOD100_JS/category.txt', 'r') as file:
         for i, line in enumerate(file):
             if i > 0:
                 line = line.rstrip('\n')
@@ -277,7 +277,7 @@ def _main():
         epochs=config['train']['nb_epochs'] + config['train']['warmup_epochs'],
         verbose=2 if config['train']['debug'] else 1,
         callbacks=callbacks,
-        # workers=4,
+        workers=16,
         max_queue_size=8
     )
 
@@ -296,4 +296,8 @@ def _main():
 
 
 if __name__ == '__main__':
+    os.environ['MKL_NUM_THREADS'] = '64'
+    os.environ['GOTO_NUM_THREADS'] = '64'
+    os.environ['OMP_NUM_THREADS'] = '64'
+    os.environ['openmp'] = 'True'
     _main()

@@ -25,8 +25,8 @@ def evaluate(model,
              iou_threshold=0.5,
              obj_thresh=0.5,
              nms_thresh=0.45,
-             net_h=416,
-             net_w=416,
+             net_h=224,
+             net_w=224,
              save_path=None):
     """ Evaluate a given dataset using a given model.
     code originally from https://github.com/fizyr/keras-retinanet

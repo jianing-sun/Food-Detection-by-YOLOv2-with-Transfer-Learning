@@ -5,6 +5,7 @@ from keras.layers import Conv2D, Input, BatchNormalization, ZeroPadding2D, \
     UpSampling2D, DepthwiseConv2D, Activation, concatenate
 from keras.layers.merge import add
 from keras.models import Model
+from keras.applications import MobileNetV2
 
 
 class YoloLayer(Layer):
@@ -309,11 +310,14 @@ def create_scaled_mobilenet_model(
     # Conv dw / s2: filter shape (3 x 3 x 1024 dw)  Conv pw / s1: filter shape (1 x 1 x 1024 x 1024)
     x = depthwise_separable_conv_block(x, dw_stride=(1, 1), pw_num_filter=256, id=40)
 
-    # layer 41-43
+    # layer 41-50
     pred_yolo_3 = depthwise_conv_block(x, [
-        {'filter': 128, 'kernel': 3, 'stride': 1, 'bnorm': True, 'relu6': True, 'layer_idx': 38},
+        {'filter': 128, 'kernel': 1, 'stride': 1, 'bnorm': True, 'relu6': True, 'layer_idx': 41},
+        {'filter': 256, 'kernel': 3, 'stride': 1, 'bnorm': True, 'relu6': True, 'layer_idx': 43},
+        {'filter': 128, 'kernel': 1, 'stride': 1, 'bnorm': True, 'relu6': True, 'layer_idx': 45},
+        {'filter': 256, 'kernel': 3, 'stride': 1, 'bnorm': True, 'relu6': True, 'layer_idx': 47},
         {'filter': (3 * (5 + nb_class)), 'kernel': 1, 'stride': 1, 'bnorm': False,
-         'relu6': False, 'layer_idx': 39}])
+         'relu6': False, 'layer_idx': 49}])
     loss_yolo_3 = YoloLayer(anchors[:6],
                             [4 * num for num in max_grid],
                             batch_size,
