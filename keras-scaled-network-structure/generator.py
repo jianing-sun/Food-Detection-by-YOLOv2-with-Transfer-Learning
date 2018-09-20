@@ -101,17 +101,17 @@ class BatchGenerator(Sequence):
         t_batch = np.zeros((r_bound - l_bound, 1, 1, 1, self.max_box_per_image, 4))  # list of groundtruth boxes
 
         # initialize the inputs and the outputs
-        yolo_1 = np.zeros((r_bound - l_bound, 1 * base_grid_h, 1 * base_grid_w, len(self.anchors) // 3,
+        yolo_1 = np.zeros((r_bound - l_bound, 1 * base_grid_h, 1 * base_grid_w, len(self.anchors) // 2,
                            4 + 1 + len(self.labels)))  # desired network output 1
-        yolo_2 = np.zeros((r_bound - l_bound, 2 * base_grid_h, 2 * base_grid_w, len(self.anchors) // 3,
+        yolo_2 = np.zeros((r_bound - l_bound, 2 * base_grid_h, 2 * base_grid_w, len(self.anchors) // 2,
                            4 + 1 + len(self.labels)))  # desired network output 2
-        yolo_3 = np.zeros((r_bound - l_bound, 4 * base_grid_h, 4 * base_grid_w, len(self.anchors) // 3,
-                           4 + 1 + len(self.labels)))  # desired network output 3
-        yolos = [yolo_3, yolo_2, yolo_1]
+        # yolo_3 = np.zeros((r_bound - l_bound, 4 * base_grid_h, 4 * base_grid_w, len(self.anchors) // 3,
+        #                    4 + 1 + len(self.labels)))  # desired network output 3
+        yolos = [yolo_2, yolo_1]
 
         dummy_yolo_1 = np.zeros((r_bound - l_bound, 1))
         dummy_yolo_2 = np.zeros((r_bound - l_bound, 1))
-        dummy_yolo_3 = np.zeros((r_bound - l_bound, 1))
+        # dummy_yolo_3 = np.zeros((r_bound - l_bound, 1))
 
         instance_count = 0
         true_box_index = 0
@@ -166,8 +166,8 @@ class BatchGenerator(Sequence):
                 grid_x = int(np.floor(center_x))
                 grid_y = int(np.floor(center_y))
 
-                grid_y = max(min(grid_y, 27), 0)
-                grid_x = max(min(grid_x, 27), 0)
+                grid_y = max(min(grid_y, 13), 0)
+                grid_x = max(min(grid_x, 13), 0)
                 # print(grid_y, grid_x)
 
                 # assign ground truth x, y, w, h, confidence and class probs to y_batch
@@ -212,7 +212,7 @@ class BatchGenerator(Sequence):
             # increase instance counter in the current batch
             instance_count += 1
 
-        return [x_batch, t_batch, yolo_1, yolo_2, yolo_3], [dummy_yolo_1, dummy_yolo_2, dummy_yolo_3]
+        return [x_batch, t_batch, yolo_1, yolo_2], [dummy_yolo_1, dummy_yolo_2]
 
     def _get_net_size(self, idx):
         if idx % 10 == 0:

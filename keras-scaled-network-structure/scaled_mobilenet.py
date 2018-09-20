@@ -2,7 +2,7 @@ import keras.backend as K
 import tensorflow as tf
 from keras.engine.topology import Layer
 from keras.layers import Conv2D, Input, BatchNormalization, ZeroPadding2D, \
-    UpSampling2D, DepthwiseConv2D, Activation, concatenate
+    UpSampling2D, DepthwiseConv2D, Activation, concatenate, Add
 from keras.layers.merge import add
 from keras.models import Model
 from keras.applications import MobileNetV2
@@ -203,6 +203,136 @@ class YoloLayer(Layer):
 
     def compute_output_shape(self, input_shape):
         return [(None, 1)]
+
+
+def _make_divisible(v, divisor, min_value=None):
+    if min_value is None:
+        min_value = divisor
+    new_v = max(min_value, int(v + divisor / 2) // divisor * divisor)
+    # Make sure that round down does not go down by more than 10%.
+    if new_v < 0.9 * v:
+        new_v += divisor
+    return new_v
+
+
+def create_scaled_mobilenetv2_model(nb_class,
+        anchors,
+        max_box_per_image,
+        max_grid,
+        batch_size,
+        warmup_batches,
+        ignore_thresh,
+        grid_scales,
+        obj_scale,
+        noobj_scale,
+        xywh_scale,
+        class_scale):
+
+    alpha = 1.0
+    input_image = Input(shape=(224, 224, 3))  # net_h, net_w, 3
+    true_boxes = Input(shape=(1, 1, 1, max_box_per_image, 4))
+    true_yolo_1 = Input(
+        shape=(None, None, len(anchors) // 4, 4 + 1 + nb_class))  # grid_h, grid_w, nb_anchor, 5+nb_class
+    true_yolo_2 = Input(
+        shape=(None, None, len(anchors) // 4, 4 + 1 + nb_class))  # grid_h, grid_w, nb_anchor, 5+nb_class
+
+    first_block_filters = _make_divisible(32 * alpha, 8)
+    x = Conv2D(first_block_filters,
+                      kernel_size=3,
+                      strides=(2, 2),
+                      padding='same',
+                      use_bias=False,
+                      name='Conv1')(input_image)
+    x = BatchNormalization(
+        epsilon=1e-3, momentum=0.999, name='bn_Conv1')(x)
+    x = Activation(relu6, name='Conv1_relu')(x)
+
+    x = _inverted_res_block(x, filters=16, alpha=alpha, stride=1,
+                            expansion=1, block_id=0)
+
+    x = _inverted_res_block(x, filters=24, alpha=alpha, stride=2,
+                            expansion=6, block_id=1)
+    x = _inverted_res_block(x, filters=24, alpha=alpha, stride=1,
+                            expansion=6, block_id=2)
+
+    x = _inverted_res_block(x, filters=32, alpha=alpha, stride=2,
+                            expansion=6, block_id=3)
+    x = _inverted_res_block(x, filters=32, alpha=alpha, stride=1,
+                            expansion=6, block_id=4)
+    x = _inverted_res_block(x, filters=32, alpha=alpha, stride=1,
+                            expansion=6, block_id=5)
+
+    x = _inverted_res_block(x, filters=64, alpha=alpha, stride=2,
+                            expansion=6, block_id=6)
+    x = _inverted_res_block(x, filters=64, alpha=alpha, stride=1,
+                            expansion=6, block_id=7)
+    x = _inverted_res_block(x, filters=64, alpha=alpha, stride=1,
+                            expansion=6, block_id=8)
+    x = _inverted_res_block(x, filters=64, alpha=alpha, stride=1,
+                            expansion=6, block_id=9)
+
+    x = _inverted_res_block(x, filters=96, alpha=alpha, stride=1,
+                            expansion=6, block_id=10)
+    x = _inverted_res_block(x, filters=96, alpha=alpha, stride=1,
+                            expansion=6, block_id=11)
+    x = _inverted_res_block(x, filters=96, alpha=alpha, stride=1,
+                            expansion=6, block_id=12)
+
+    skip_1 = x
+
+    x = _inverted_res_block(x, filters=160, alpha=alpha, stride=2,
+                            expansion=6, block_id=13)
+    x = _inverted_res_block(x, filters=160, alpha=alpha, stride=1,
+                            expansion=6, block_id=14)
+    x = _inverted_res_block(x, filters=160, alpha=alpha, stride=1,
+                            expansion=6, block_id=15)
+
+    x = _inverted_res_block(x, filters=320, alpha=alpha, stride=1,
+                            expansion=6, block_id=16)
+
+    pred_yolo_1 = depthwise_conv_block(x, [
+        {'filter': 640, 'kernel': 3, 'stride': 1, 'bnorm': True, 'relu6': True, 'layer_idx': 17},
+        {'filter': (3 * (5 + nb_class)), 'kernel': 1, 'stride': 1, 'bnorm': False, 'relu6': False, 'layer_idx': 18}])
+
+    loss_yolo_1 = YoloLayer(anchors[6:],
+                            [1 * num for num in max_grid],
+                            batch_size,
+                            warmup_batches,
+                            ignore_thresh,
+                            grid_scales[0],
+                            obj_scale,
+                            noobj_scale,
+                            xywh_scale,
+                            class_scale)([input_image, pred_yolo_1, true_yolo_1, true_boxes])
+
+    x = depthwise_separable_conv_block(x, dw_stride=(1, 1), pw_num_filter=512, id=19)
+    x = UpSampling2D(2)(x)
+    x = concatenate([x, skip_1])
+
+    # layer 41-50
+    pred_yolo_2 = depthwise_conv_block(x, [
+        {'filter': 160, 'kernel': 1, 'stride': 1, 'bnorm': True, 'relu6': True, 'layer_idx': 20},
+        {'filter': 320, 'kernel': 3, 'stride': 1, 'bnorm': True, 'relu6': True, 'layer_idx': 21},
+        {'filter': 160, 'kernel': 1, 'stride': 1, 'bnorm': True, 'relu6': True, 'layer_idx': 22},
+        {'filter': 320, 'kernel': 3, 'stride': 1, 'bnorm': True, 'relu6': True, 'layer_idx': 23},
+        {'filter': (3 * (5 + nb_class)), 'kernel': 1, 'stride': 1, 'bnorm': False,
+         'relu6': False, 'layer_idx': 24}])
+    loss_yolo_2 = YoloLayer(anchors[:6],
+                            [4 * num for num in max_grid],
+                            batch_size,
+                            warmup_batches,
+                            ignore_thresh,
+                            grid_scales[2],
+                            obj_scale,
+                            noobj_scale,
+                            xywh_scale,
+                            class_scale)([input_image, pred_yolo_2, true_yolo_2, true_boxes])
+
+    train_model = Model([input_image, true_boxes, true_yolo_1, true_yolo_2],
+                        [loss_yolo_1, loss_yolo_2])
+    infer_model = Model(input_image, [pred_yolo_1, pred_yolo_2])
+
+    return [train_model, infer_model]
 
 
 def create_scaled_mobilenet_model(
@@ -419,3 +549,53 @@ def relu6(x):
 
 def dummy_loss(y_true, y_pred):
     return tf.sqrt(tf.reduce_sum(y_pred))
+
+
+def _inverted_res_block(inputs, expansion, stride, alpha, filters, block_id):
+    in_channels = inputs._keras_shape[-1]
+    pointwise_conv_filters = int(filters * alpha)
+    pointwise_filters = _make_divisible(pointwise_conv_filters, 8)
+    x = inputs
+    prefix = 'block_{}_'.format(block_id)
+
+    if block_id:
+        # Expand
+        x = Conv2D(expansion * in_channels,
+                          kernel_size=1,
+                          padding='same',
+                          use_bias=False,
+                          activation=None,
+                          name=prefix + 'expand')(x)
+        x = BatchNormalization(epsilon=1e-3,
+                                      momentum=0.999,
+                                      name=prefix + 'expand_BN')(x)
+        x = Activation(relu6, name=prefix + 'expand_relu')(x)
+    else:
+        prefix = 'expanded_conv_'
+
+    # Depthwise
+    x = DepthwiseConv2D(kernel_size=3,
+                               strides=stride,
+                               activation=None,
+                               use_bias=False,
+                               padding='same',
+                               name=prefix + 'depthwise')(x)
+    x = BatchNormalization(epsilon=1e-3,
+                                  momentum=0.999,
+                                  name=prefix + 'depthwise_BN')(x)
+
+    x = Activation(relu6, name=prefix + 'depthwise_relu')(x)
+
+    # Project
+    x = Conv2D(pointwise_filters,
+                      kernel_size=1,
+                      padding='same',
+                      use_bias=False,
+                      activation=None,
+                      name=prefix + 'project')(x)
+    x = BatchNormalization(
+        epsilon=1e-3, momentum=0.999, name=prefix + 'project_BN')(x)
+
+    if in_channels == pointwise_filters and stride == 1:
+        return Add(name=prefix + 'add')([inputs, x])   # added with skip layer
+    return x

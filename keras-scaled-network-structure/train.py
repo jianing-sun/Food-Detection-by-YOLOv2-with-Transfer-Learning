@@ -15,7 +15,7 @@ from callbacks import CustomModelCheckpoint, CustomTensorBoard
 from generator import BatchGenerator
 from utils.multi_gpu_model import multi_gpu_model
 from utils.utils import normalize, evaluate, makedirs, parse_annotation
-from scaled_mobilenet import create_scaled_mobilenet_model, dummy_loss
+from scaled_mobilenet import create_scaled_mobilenet_model, dummy_loss, create_scaled_mobilenetv2_model
 
 
 def create_train_valid_set(
@@ -118,7 +118,7 @@ def create_model(
 ):
     if multi_gpu > 1:
         with tf.device('/cpu:0'):
-            template_model, infer_model = create_scaled_mobilenet_model(
+            template_model, infer_model = create_scaled_mobilenetv2_model(
                 nb_class=nb_class,
                 anchors=anchors,
                 max_box_per_image=max_box_per_image,
@@ -133,7 +133,7 @@ def create_model(
                 class_scale=class_scale
             )
     else:
-        template_model, infer_model = create_scaled_mobilenet_model(
+        template_model, infer_model = create_scaled_mobilenetv2_model(
             nb_class=nb_class,
             anchors=anchors,
             max_box_per_image=max_box_per_image,
@@ -160,7 +160,8 @@ def create_model(
     else:
         train_model = template_model
 
-    optimizer = Adam(lr=lr, clipnorm=0.001)
+    # optimizer = Adam(lr=lr, clipnorm=0.001)
+    optimizer = Adam(lr=1e-4, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.0)
     train_model.compile(loss=dummy_loss, optimizer=optimizer)
 
     return train_model, infer_model
@@ -168,7 +169,7 @@ def create_model(
 
 def read_category():
     category = []
-    with open('../UECFOOD100_JS/category.txt', 'r') as file:
+    with open('/Volumes/JS/UECFOOD100_JS/category.txt', 'r') as file:
         for i, line in enumerate(file):
             if i > 0:
                 line = line.rstrip('\n')
@@ -178,7 +179,7 @@ def read_category():
 
 
 def _main():
-    config_path = './config.json'
+    config_path = './local_config.json'
     LABELS = read_category()
 
     with open(config_path) as config_buffer:
@@ -296,8 +297,8 @@ def _main():
 
 
 if __name__ == '__main__':
-    os.environ['MKL_NUM_THREADS'] = '64'
-    os.environ['GOTO_NUM_THREADS'] = '64'
-    os.environ['OMP_NUM_THREADS'] = '64'
-    os.environ['openmp'] = 'True'
+    # os.environ['MKL_NUM_THREADS'] = '64'
+    # os.environ['GOTO_NUM_THREADS'] = '64'
+    # os.environ['OMP_NUM_THREADS'] = '64'
+    # os.environ['openmp'] = 'True'
     _main()
