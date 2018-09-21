@@ -57,22 +57,22 @@ def gen_template():
 
 
 def write_xml(line, i_folder, category):
-    if not os.path.exists('/Volumes/JS/UECFOOD100_JS/' + str(i_folder) + '/annotations_new/'):
-        os.makedirs('/Volumes/JS/UECFOOD100_JS/' + str(i_folder) + '/annotations_new')
+    if not os.path.exists('/Volumes/JS/UECFOOD100_448/' + str(i_folder) + '/annotations_new/'):
+        os.makedirs('/Volumes/JS/UECFOOD100_448/' + str(i_folder) + '/annotations_new')
 
-    anno_path = '/Volumes/JS/UECFOOD100_JS/' + str(i_folder) + '/annotations_new/' + line[0] + '.xml'
+    anno_path = '/Volumes/JS/UECFOOD100_448/' + str(i_folder) + '/annotations_new/' + line[0] + '.xml'
 
     if not os.path.isfile(anno_path):
         root = ET.Element('annotation', verified='yes')
 
         folder = ET.SubElement(root, 'folder')
-        folder.text = '/Volumes/JS/UECFOOD100_JS/1'
+        folder.text = '/Volumes/JS/UECFOOD100_448/' + str(i_folder)
 
         filename = ET.SubElement(root, 'filename')
         filename.text = line[0] + '.jpg'
 
         path = ET.SubElement(root, 'path')
-        path.text = '/Volumes/JS/UECFOOD100_JS/' + str(i_folder) + '/' + line[0] + '.jpg'
+        path.text = '/Volumes/JS/UECFOOD100_448/' + str(i_folder) + '/' + line[0] + '.jpg'
         assert Image.open(path.text).size == (800, 600)
 
         size = ET.SubElement(root, 'size')
@@ -128,7 +128,7 @@ def write_xml(line, i_folder, category):
 
 def read_category():
     category = []
-    with open('/Volumes/JS/UECFOOD100_JS/category.txt', 'r') as file:
+    with open('/Volumes/JS/UECFOOD100_448/category.txt', 'r') as file:
         for i, line in enumerate(file):
             if i > 0:
                 line = line.rstrip('\n')
@@ -140,8 +140,8 @@ def read_category():
 def rm_anno_dir():
     print('removing wrongly created annotation folder under each category...')
     for i in range(1, 101):
-        if os.path.exists('/Volumes/JS/UECFOOD100_JS/' + str(i) + '/annotations_new'):
-            shutil.rmtree('/Volumes/JS/UECFOOD100_JS/' + str(i) + '/annotations_new')
+        if os.path.exists('/Volumes/JS/UECFOOD100_448/' + str(i) + '/annotations_new'):
+            shutil.rmtree('/Volumes/JS/UECFOOD100_448/' + str(i) + '/annotations_new')
     print('Done!')
 
 
@@ -150,7 +150,7 @@ def gen_xmls():
     category = read_category()
     new_bb_info = 'new_bb_info.txt'
     for i_folder in range(1, num_classes + 1):
-        imagepath = '/Volumes/JS/UECFOOD100_JS/' + str(i_folder)
+        imagepath = '/Volumes/JS/UECFOOD100_448/' + str(i_folder)
         with open(imagepath + '/' + new_bb_info, 'r') as bbox_file:
             num_items = sum(1 for line in open(imagepath + '/' + new_bb_info)) - 1
             print(num_items)

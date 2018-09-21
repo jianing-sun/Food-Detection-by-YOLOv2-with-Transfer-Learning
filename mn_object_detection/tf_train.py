@@ -1,17 +1,25 @@
 import os
 import cv2
-from keras.applications import inception_v3, mobilenetv2
+# from keras.applications import inception_v3, mobilenetv2
+
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
+
 from keras.callbacks import EarlyStopping, ModelCheckpoint, TensorBoard
-from keras.layers import Reshape, Conv2D, Input, Lambda, UpSampling2D
+from keras.layers import Reshape, Conv2D, Input, Lambda, UpSampling2D, MaxPooling2D, LeakyReLU, BatchNormalization
 from keras.models import Model
 from keras.optimizers import Adam
-
+from keras.layers.merge import concatenate
 from keras_applications.mobilenet import _depthwise_conv_block
 from keras_applications.mobilenet_v2 import _inverted_res_block
+
+from networks.my_inception_v3 import myInceptionV3
 from preprocessing import parse_annotation, BatchGenerator
+
+
+def space_to_depth_x2(x):
+    return tf.space_to_depth(x, block_size=2)
 
 
 def normalize(image):
@@ -82,12 +90,97 @@ def add_mn(x):
 def get_model():
     """ Build MobileNetV1 model """
     print('=> Building MobileNetV1 model...')
-    small_incepv3 = inception_v3.myInceptionV3(weights='imagenet', input_shape=(224, 224, 3), include_top=False)
+    small_incepv3 = myInceptionV3(weights='imagenet', input_shape=(448, 448, 3), include_top=False)
     # print('small_incepv3.summary()', small_incepv3.summary())
     small_incepv3 = Model(inputs=small_incepv3.inputs, outputs=small_incepv3.layers[-84].input)
     # print(small_incepv3.summary())
     x = small_incepv3(input_image)
     x = add_mn2(x)
+    x = Conv2D(N_BOX * (4 + 1 + CLASS), (1, 1), strides=(1, 1), padding='same', name='conv_23')(x)
+    output = Reshape((GRID_H, GRID_W, N_BOX, 4 + 1 + CLASS))(x)
+
+    # small hack to allow true_boxes to be registered when Keras build the model
+    # for more information: https://github.com/fchollet/keras/issues/2790
+    output = Lambda(lambda args: args[0])([output, true_boxes])
+
+    model = Model([input_image, true_boxes], output)
+    print(model.summary())
+    return model
+
+
+def addDarknet(x):
+    # Layer 13    28x28
+    x = Conv2D(512, (3, 3), strides=(1, 1), padding='same', name='conv_dn_13', use_bias=False)(x)
+    x = BatchNormalization(name='norm_13')(x)
+    x = LeakyReLU(alpha=0.1)(x)
+
+    x = MaxPooling2D(pool_size=(2, 2))(x)
+
+    # Layer 14   14x14
+    x = Conv2D(1024, (3, 3), strides=(1, 1), padding='same', name='conv_dn_14', use_bias=False)(x)
+    x = BatchNormalization(name='norm_14')(x)
+    x = LeakyReLU(alpha=0.1)(x)
+
+    # Layer 15
+    x = Conv2D(512, (1, 1), strides=(1, 1), padding='same', name='conv_dn_15', use_bias=False)(x)
+    x = BatchNormalization(name='norm_15')(x)
+    x = LeakyReLU(alpha=0.1)(x)
+
+    # Layer 16
+    x = Conv2D(1024, (3, 3), strides=(1, 1), padding='same', name='conv_dn_16', use_bias=False)(x)
+    x = BatchNormalization(name='norm_16')(x)
+    x = LeakyReLU(alpha=0.1)(x)
+
+    # Layer 17   14x14
+    x = Conv2D(512, (1, 1), strides=(1, 1), padding='same', name='conv_dn_17', use_bias=False)(x)
+    x = BatchNormalization(name='norm_17')(x)
+    x = LeakyReLU(alpha=0.1)(x)
+
+    skip_connection = x
+
+    x = MaxPooling2D(pool_size=(2, 2))(x)
+
+    # Layer 18   7x7
+    x = Conv2D(1024, (3, 3), strides=(1, 1), padding='same', name='conv_dn_18', use_bias=False)(x)
+    x = BatchNormalization(name='norm_18')(x)
+    x = LeakyReLU(alpha=0.1)(x)
+
+    # Layer 19
+    x = Conv2D(1024, (3, 3), strides=(1, 1), padding='same', name='conv_19', use_bias=False)(x)
+    x = BatchNormalization(name='norm_19')(x)
+    x = LeakyReLU(alpha=0.1)(x)
+
+    # Layer 20
+    x = Conv2D(1024, (3, 3), strides=(1, 1), padding='same', name='conv_20', use_bias=False)(x)
+    x = BatchNormalization(name='norm_20')(x)
+    x = LeakyReLU(alpha=0.1)(x)
+
+    # Layer 21
+    skip_connection = Conv2D(64, (1, 1), strides=(1, 1), padding='same', name='conv_21', use_bias=False)(
+        skip_connection)
+    skip_connection = BatchNormalization(name='norm_21')(skip_connection)
+    skip_connection = LeakyReLU(alpha=0.1)(skip_connection)
+    skip_connection = Lambda(space_to_depth_x2)(skip_connection)
+
+    x = concatenate([skip_connection, x])
+
+    # Layer 22
+    x = Conv2D(1024, (3, 3), strides=(1, 1), padding='same', name='conv_22', use_bias=False)(x)
+    x = BatchNormalization(name='norm_22')(x)
+    x = LeakyReLU(alpha=0.1)(x)
+
+    return x
+
+
+def get_darknet_with_myIncepv3():
+    """ Build MobileNetV1 model """
+    print('=> Building MobileNetV1 model...')
+    small_incepv3 = myInceptionV3(weights='imagenet', input_shape=(448, 448, 3), include_top=False)
+    # print('small_incepv3.summary()', small_incepv3.summary())
+    small_incepv3 = Model(inputs=small_incepv3.inputs, outputs=small_incepv3.layers[-84].input)
+    print(small_incepv3.summary())
+    x = small_incepv3(input_image)
+    x = addDarknet(x)
     x = Conv2D(N_BOX * (4 + 1 + CLASS), (1, 1), strides=(1, 1), padding='same', name='conv_23')(x)
     output = Reshape((GRID_H, GRID_W, N_BOX, 4 + 1 + CLASS))(x)
 
@@ -317,7 +410,7 @@ if __name__ == '__main__':
     ''' Initiailize parameters '''
     LABELS = read_category()
 
-    IMAGE_H, IMAGE_W = 224, 224  # must equal to GRID_H * 32  416, 416
+    IMAGE_H, IMAGE_W = 448, 448  # must equal to GRID_H * 32  416, 416
     GRID_H, GRID_W = 7, 7        # 13, 13
     N_BOX = 5
     CLASS = len(LABELS)
@@ -327,7 +420,7 @@ if __name__ == '__main__':
 
     # Read knn generated anchor_5.txt
     ANCHORS = []
-    with open('/Volumes/JS/UECFOOD100_JS/generated_anchors/anchors_5.txt', 'r') as anchor_file:
+    with open('/Volumes/JS/UECFOOD100_448/generated_anchors_mobilenet/anchors_5.txt', 'r') as anchor_file:
         for i, line in enumerate(anchor_file):
             line = line.rstrip('\n')
             ANCHORS.append(list(map(float, line.split(', '))))
@@ -338,9 +431,9 @@ if __name__ == '__main__':
     COORD_SCALE = 1.0
     CLASS_SCALE = 1.0
 
-    BATCH_SIZE = 32
+    BATCH_SIZE = 16
     WARM_UP_BATCHES = 100
-    TRUE_BOX_BUFFER = 50
+    TRUE_BOX_BUFFER = 15
 
     generator_config = {
         'IMAGE_H': IMAGE_H,
@@ -357,8 +450,8 @@ if __name__ == '__main__':
 
     all_imgs = []
     for i in range(0, len(LABELS)):
-        image_path = '/Volumes/JS/UECFOOD100_JS/' + str(i+1) + '/'
-        annot_path = '/Volumes/JS/UECFOOD100_JS/' + str(i+1) + '/' + '/annotations_new/'
+        image_path = '/Volumes/JS/UECFOOD100_448/' + str(i+1) + '/'
+        annot_path = '/Volumes/JS/UECFOOD100_448/' + str(i+1) + '/' + '/annotations_new/'
 
         folder_imgs, seen_labels = parse_annotation(annot_path, image_path)
         all_imgs.extend(folder_imgs)
@@ -384,6 +477,6 @@ if __name__ == '__main__':
     input_image = Input(shape=(IMAGE_H, IMAGE_W, 3))
     true_boxes = Input(shape=(1, 1, 1, TRUE_BOX_BUFFER, 4))
 
-    model = get_model()
+    model = get_darknet_with_myIncepv3()
 
     train(model)

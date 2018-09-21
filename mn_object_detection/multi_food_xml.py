@@ -3,7 +3,7 @@ from lxml import etree as ET
 
 def read_category():
     category = []
-    with open('/Volumes/JS/UECFOOD100_JS/category.txt', 'r') as file:
+    with open('/Volumes/JS/UECFOOD100_448/category.txt', 'r') as file:
         for i, line in enumerate(file):
             if i > 0:
                 line = line.rstrip('\n')
@@ -18,13 +18,13 @@ def write_multifood_xml(img_name, bb_info2xml, category):
         root = ET.Element('annotation', verified='yes')
 
         folder = ET.SubElement(root, 'folder')
-        folder.text = 'UECFOOD100_JS/' + bb_info2xml[i][0]
+        folder.text = 'UECFOOD100_448/' + bb_info2xml[i][0]
 
         filename = ET.SubElement(root, 'filename')
         filename.text = img_name
 
         path = ET.SubElement(root, 'path')
-        path.text = '/Volumes/JS/UECFOOD100_JS/' + bb_info2xml[i][0] + '/' + img_name
+        path.text = '/Volumes/JS/UECFOOD100_448/' + bb_info2xml[i][0] + '/' + img_name
 
         size = ET.SubElement(root, 'size')
         width = ET.SubElement(size, 'width')
@@ -52,13 +52,13 @@ def write_multifood_xml(img_name, bb_info2xml, category):
             ymax.text = bb_info2xml[j][4]
 
         tree = ET.ElementTree(root)
-        tree.write('/Volumes/JS/UECFOOD100_JS/' + bb_info2xml[i][0] + '/' + 'annotations_new/' + img_name[:-4] + '.xml', pretty_print=True)
+        tree.write('/Volumes/JS/UECFOOD100_448/' + bb_info2xml[i][0] + '/' + 'annotations_new/' + img_name[:-4] + '.xml', pretty_print=True)
 
 
 if __name__ == '__main__':
     print('Start here')
     category = read_category()
-    with open('/Volumes/JS/UECFOOD100_JS/multiple_food.txt', 'r') as file:
+    with open('/Volumes/JS/UECFOOD100_448/multiple_food.txt', 'r') as file:
         for i, line in enumerate(file):
             if i > 0:
                 line = line.rstrip('\n')
@@ -66,7 +66,7 @@ if __name__ == '__main__':
                 print(line)
                 bb_info2xml = []
                 for j in range(1, len(line)):
-                    with open('/Volumes/JS/UECFOOD100_JS/' + line[j] + '/new_bb_info.txt', 'r') as bb_file:
+                    with open('/Volumes/JS/UECFOOD100_448/' + line[j] + '/new_bb_info.txt', 'r') as bb_file:
                         for l in bb_file.readlines():
                             if l.startswith(line[0]):
                                 l = l.rstrip('\n').split(' ')

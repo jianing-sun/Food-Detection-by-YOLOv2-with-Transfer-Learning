@@ -87,8 +87,8 @@ def myInceptionV3(include_top=True,
     else:
         channel_axis = 3
 
-    x = layers.UpSampling2D(2)(img_input)
-    x = conv2d_bn(x, 32, 3, 3, strides=(2, 2), padding='valid')
+    # x = layers.UpSampling2D(2)(img_input)
+    x = conv2d_bn(img_input, 32, 3, 3, strides=(2, 2), padding='valid')
     x = conv2d_bn(x, 32, 3, 3, padding='valid')
     x = conv2d_bn(x, 64, 3, 3, padding='valid')
     x = layers.MaxPooling2D((3, 3), strides=(2, 2))(x)
