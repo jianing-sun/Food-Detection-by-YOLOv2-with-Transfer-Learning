@@ -173,17 +173,26 @@ def addDarknet(x):
 
 
 def get_pretrained_mn1():
-    alpha, depth_multiplier = 1.0, 1.0
+    alpha, depth_multiplier = 1, 1
     print('=> Building new model with pretrained MobilenetV1...')
-    old_mn1 = load_model('./models/gap_foodnotfood_mn1_224.h5')
-    x = old_mn1.output
+
+    pretrained_gap_model = load_model('./models/gap_foodnotfood_mn1_224.h5')
+    print(pretrained_gap_model.summary())
+    model = Model(inputs=pretrained_gap_model.input, outputs=pretrained_gap_model.layers[-6].input)
+    print(model.summary())
+    x = model(input_image)
     x = _depthwise_conv_block(x, 1024, alpha, depth_multiplier,
                               strides=(2, 2), block_id=12)
     x = _depthwise_conv_block(x, 1024, alpha, depth_multiplier, block_id=13)
-    new_tf_model = Model(inputs=old_mn1.input, outputs=x)
-    print(new_tf_model.summary())
+
+    x = Conv2D(N_BOX * (4 + 1 + CLASS), (1, 1), strides=(1, 1), padding='same', name='conv_23')(x)
+    output = Reshape((GRID_H, GRID_W, N_BOX, 4 + 1 + CLASS))(x)
+    output = Lambda(lambda args: args[0])([output, true_boxes])
+
+    model = Model([input_image, true_boxes], output)
+    print(model.summary())
     print('Finish new model.')
-    return new_tf_model
+    return model
 
 
 def get_darknet_with_myIncepv3():
@@ -433,7 +442,7 @@ if __name__ == '__main__':
 
     # Read knn generated anchor_5.txt
     ANCHORS = []
-    with open('../UECFOOD100_448/generated_anchors_mobilenet/anchors_5.txt', 'r') as anchor_file:
+    with open('../UECFOOD100_JS/generated_anchors_mobilenet/anchors_5.txt', 'r') as anchor_file:
         for i, line in enumerate(anchor_file):
             line = line.rstrip('\n')
             ANCHORS.append(list(map(float, line.split(', '))))
@@ -463,8 +472,8 @@ if __name__ == '__main__':
 
     all_imgs = []
     for i in range(0, len(LABELS)):
-        image_path = '../UECFOOD100_448/' + str(i+1) + '/'
-        annot_path = '../UECFOOD100_448/' + str(i+1) + '/' + '/annotations_new/'
+        image_path = '../UECFOOD100_JS/' + str(i+1) + '/'
+        annot_path = '../UECFOOD100_JS/' + str(i+1) + '/' + '/annotations_new/'
 
         folder_imgs, seen_labels = parse_annotation(annot_path, image_path)
         all_imgs.extend(folder_imgs)

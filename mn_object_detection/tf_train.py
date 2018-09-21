@@ -1,6 +1,7 @@
 import os
 import cv2
-# from keras.applications import inception_v3, mobilenetv2
+from keras.applications import inception_v3
+from keras_applications.mobilenet import MobileNet
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -8,6 +9,7 @@ import tensorflow as tf
 
 from keras.callbacks import EarlyStopping, ModelCheckpoint, TensorBoard
 from keras.layers import Reshape, Conv2D, Input, Lambda, UpSampling2D, MaxPooling2D, LeakyReLU, BatchNormalization
+from keras import layers
 from keras.models import Model, load_model
 from keras.optimizers import Adam
 from keras.layers.merge import concatenate
@@ -90,12 +92,12 @@ def add_mn(x):
 def get_model():
     """ Build MobileNetV1 model """
     print('=> Building MobileNetV1 model...')
-    small_incepv3 = myInceptionV3(weights='imagenet', input_shape=(448, 448, 3), include_top=False)
+    small_incepv3 = myInceptionV3(weights='imagenet', input_shape=(224, 224, 3), include_top=False)
     # print('small_incepv3.summary()', small_incepv3.summary())
     small_incepv3 = Model(inputs=small_incepv3.inputs, outputs=small_incepv3.layers[-84].input)
     # print(small_incepv3.summary())
     x = small_incepv3(input_image)
-    x = add_mn2(x)
+    x = add_mn(x)
     x = Conv2D(N_BOX * (4 + 1 + CLASS), (1, 1), strides=(1, 1), padding='same', name='conv_23')(x)
     output = Reshape((GRID_H, GRID_W, N_BOX, 4 + 1 + CLASS))(x)
 
@@ -173,17 +175,17 @@ def addDarknet(x):
 
 
 def get_pretrained_mn1():
-    alpha, depth_multiplier = 1.0, 1.0
+    alpha, depth_multiplier = 1, 1
     print('=> Building new model with pretrained MobilenetV1...')
-    old_mn1 = load_model('./models/gap_foodnotfood_mn1_224.h5')
-    print(old_mn1.summary())
-    old_mn1 = Model(inputs=old_mn1.input, output=old_mn1.layers[-4].input)
-    x = old_mn1.output
+
+    pretrained_gap_model = load_model('./models/gap_foodnotfood_mn1_224.h5')
+    print(pretrained_gap_model.summary())
+    model = Model(inputs=pretrained_gap_model.input, outputs=pretrained_gap_model.layers[-6].input)
+    print(model.summary())
+    x = model(input_image)
     x = _depthwise_conv_block(x, 1024, alpha, depth_multiplier,
                               strides=(2, 2), block_id=12)
     x = _depthwise_conv_block(x, 1024, alpha, depth_multiplier, block_id=13)
-    new_tf_model = Model(inputs=old_mn1.input, outputs=x)
-    print(new_tf_model.summary())
 
     x = Conv2D(N_BOX * (4 + 1 + CLASS), (1, 1), strides=(1, 1), padding='same', name='conv_23')(x)
     output = Reshape((GRID_H, GRID_W, N_BOX, 4 + 1 + CLASS))(x)
@@ -192,13 +194,13 @@ def get_pretrained_mn1():
     model = Model([input_image, true_boxes], output)
     print(model.summary())
     print('Finish new model.')
-    return new_tf_model
+    return model
 
 
 def get_darknet_with_myIncepv3():
     """ Build MobileNetV1 model """
     print('=> Building MobileNetV1 model...')
-    small_incepv3 = myInceptionV3(weights='imagenet', input_shape=(448, 448, 3), include_top=False)
+    small_incepv3 = myInceptionV3(weights='imagenet', input_shape=(224, 224, 3), include_top=False)
     # print('small_incepv3.summary()', small_incepv3.summary())
     small_incepv3 = Model(inputs=small_incepv3.inputs, outputs=small_incepv3.layers[-84].input)
     print(small_incepv3.summary())
@@ -239,7 +241,7 @@ def train(model):
                                  mode='min',
                                  period=1)
 
-    # model.load_weights('./models/mobile_net_loss0_07.h5')
+    model.load_weights('./models/mobile_net_loss0_07.h5')
 
     tb_counter = len([log for log in os.listdir(os.path.expanduser('./tl_tf_logs/')) if 'uecfood100' in log]) + 1
     tensorboard = TensorBoard(log_dir=os.path.expanduser('~/tf_log/') + 'transferLearning_uecfood100' + '_' + str(tb_counter),
@@ -433,7 +435,7 @@ if __name__ == '__main__':
     ''' Initiailize parameters '''
     LABELS = read_category()
 
-    IMAGE_H, IMAGE_W = 448, 448  # must equal to GRID_H * 32  416, 416
+    IMAGE_H, IMAGE_W = 224, 224  # must equal to GRID_H * 32  416, 416
     GRID_H, GRID_W = 7, 7        # 13, 13
     N_BOX = 5
     CLASS = len(LABELS)
@@ -443,7 +445,7 @@ if __name__ == '__main__':
 
     # Read knn generated anchor_5.txt
     ANCHORS = []
-    with open('/Volumes/JS/UECFOOD100_448/generated_anchors_mobilenet/anchors_5.txt', 'r') as anchor_file:
+    with open('/Volumes/JS/UECFOOD100_JS/generated_anchors_mobilenet/anchors_5.txt', 'r') as anchor_file:
         for i, line in enumerate(anchor_file):
             line = line.rstrip('\n')
             ANCHORS.append(list(map(float, line.split(', '))))
@@ -473,8 +475,8 @@ if __name__ == '__main__':
 
     all_imgs = []
     for i in range(0, len(LABELS)):
-        image_path = '/Volumes/JS/UECFOOD100_448/' + str(i+1) + '/'
-        annot_path = '/Volumes/JS/UECFOOD100_448/' + str(i+1) + '/' + '/annotations_new/'
+        image_path = '/Volumes/JS/UECFOOD100_JS/' + str(i+1) + '/'
+        annot_path = '/Volumes/JS/UECFOOD100_JS/' + str(i+1) + '/' + '/annotations_new/'
 
         folder_imgs, seen_labels = parse_annotation(annot_path, image_path)
         all_imgs.extend(folder_imgs)
@@ -501,5 +503,7 @@ if __name__ == '__main__':
     true_boxes = Input(shape=(1, 1, 1, TRUE_BOX_BUFFER, 4))
 
     model = get_pretrained_mn1()
+    # model = get_darknet_with_myIncepv3()
+    # model = get_model()
 
     train(model)
