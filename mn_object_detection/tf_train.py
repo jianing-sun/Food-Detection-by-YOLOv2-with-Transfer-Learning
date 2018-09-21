@@ -8,7 +8,7 @@ import tensorflow as tf
 
 from keras.callbacks import EarlyStopping, ModelCheckpoint, TensorBoard
 from keras.layers import Reshape, Conv2D, Input, Lambda, UpSampling2D, MaxPooling2D, LeakyReLU, BatchNormalization
-from keras.models import Model
+from keras.models import Model, load_model
 from keras.optimizers import Adam
 from keras.layers.merge import concatenate
 from keras_applications.mobilenet import _depthwise_conv_block
@@ -170,6 +170,29 @@ def addDarknet(x):
     x = LeakyReLU(alpha=0.1)(x)
 
     return x
+
+
+def get_pretrained_mn1():
+    alpha, depth_multiplier = 1.0, 1.0
+    print('=> Building new model with pretrained MobilenetV1...')
+    old_mn1 = load_model('./models/gap_foodnotfood_mn1_224.h5')
+    print(old_mn1.summary())
+    old_mn1 = Model(inputs=old_mn1.input, output=old_mn1.layers[-4].input)
+    x = old_mn1.output
+    x = _depthwise_conv_block(x, 1024, alpha, depth_multiplier,
+                              strides=(2, 2), block_id=12)
+    x = _depthwise_conv_block(x, 1024, alpha, depth_multiplier, block_id=13)
+    new_tf_model = Model(inputs=old_mn1.input, outputs=x)
+    print(new_tf_model.summary())
+
+    x = Conv2D(N_BOX * (4 + 1 + CLASS), (1, 1), strides=(1, 1), padding='same', name='conv_23')(x)
+    output = Reshape((GRID_H, GRID_W, N_BOX, 4 + 1 + CLASS))(x)
+    output = Lambda(lambda args: args[0])([output, true_boxes])
+
+    model = Model([input_image, true_boxes], output)
+    print(model.summary())
+    print('Finish new model.')
+    return new_tf_model
 
 
 def get_darknet_with_myIncepv3():
@@ -477,6 +500,6 @@ if __name__ == '__main__':
     input_image = Input(shape=(IMAGE_H, IMAGE_W, 3))
     true_boxes = Input(shape=(1, 1, 1, TRUE_BOX_BUFFER, 4))
 
-    model = get_darknet_with_myIncepv3()
+    model = get_pretrained_mn1()
 
     train(model)
