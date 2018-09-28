@@ -234,14 +234,14 @@ def train(model):
                                mode='min',
                                verbose=1)
 
-    checkpoint = ModelCheckpoint('transferLearning_model.h5',
+    checkpoint = ModelCheckpoint('transferLearning_mn_224.h5',
                                  monitor='val_loss',
                                  verbose=1,
                                  save_best_only=True,
                                  mode='min',
                                  period=1)
 
-    model.load_weights('./models/mobile_net_loss0_07.h5')
+    model.load_weights('./transferLearning_mn_224_0_04425.h5')
 
     tb_counter = len([log for log in os.listdir(os.path.expanduser('./tl_tf_logs/')) if 'uecfood100' in log]) + 1
     tensorboard = TensorBoard(log_dir=os.path.expanduser('~/tf_log/') + 'transferLearning_uecfood100' + '_' + str(tb_counter),
@@ -250,7 +250,7 @@ def train(model):
                               write_images=False)
 
     # TODO: try different optimizer and tweak parameters (in MNv1 paper they used RMSprop)
-    optimizer = Adam(lr=1e-4, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.0)
+    optimizer = Adam(lr=1e-6, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.0)
     # optimizer = SGD(lr=1e-4, decay=0.0005, momentum=0.9)
     # optimizer = RMSprop(lr=1e-5, rho=0.9, epsilon=1e-08, decay=0.0)
 
