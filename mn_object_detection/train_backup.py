@@ -25,7 +25,7 @@ def get_model():
     x = Conv2D(N_BOX * (4 + 1 + CLASS), (1, 1), strides=(1, 1), padding='same', name='conv_23')(x)
     output = Reshape((GRID_H, GRID_W, N_BOX, 4 + 1 + CLASS))(x)
 
-h    # small hack to allow true_boxes to be registered when Keras build the model
+    # small hack to allow true_boxes to be registered when Keras build the model
     # for more information: https://github.com/fchollet/keras/issues/2790
     output = Lambda(lambda args: args[0])([output, true_boxes])
 

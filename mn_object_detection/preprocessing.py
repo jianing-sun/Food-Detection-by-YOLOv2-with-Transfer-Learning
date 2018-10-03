@@ -159,7 +159,8 @@ class BatchGenerator(Sequence):
             annot = [obj['xmin'], obj['ymin'], obj['xmax'], obj['ymax'], self.config['LABELS'].index(obj['name'])]
             annots += [annot]
 
-        if len(annots) == 0: annots = [[]]
+        if len(annots) == 0:
+            annots = [[]]
 
         return np.array(annots)
 
@@ -267,7 +268,8 @@ class BatchGenerator(Sequence):
         image_name = train_instance['filename']
         image = cv2.imread(image_name)
 
-        if image is None: print('Cannot find ', image_name)
+        if image is None:
+            print('Cannot find ', image_name)
 
         h, w, c = image.shape
         all_objs = copy.deepcopy(train_instance['object'])
@@ -291,7 +293,7 @@ class BatchGenerator(Sequence):
 
             image = self.aug_pipe.augment_image(image)
 
-            # resize the image to standard size
+        # resize the image to standard size
         image = cv2.resize(image, (self.config['IMAGE_H'], self.config['IMAGE_W']))
         image = image[:, :, ::-1]
 

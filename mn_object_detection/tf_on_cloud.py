@@ -1,13 +1,15 @@
 import os
 import cv2
-# from keras.applications import inception_v3, mobilenetv2
+from keras.applications import inception_v3
+from keras_applications.mobilenet import MobileNet
 
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 
-from keras.callbacks import EarlyStopping, ModelCheckpoint, TensorBoard
+from keras.callbacks import EarlyStopping, ModelCheckpoint, TensorBoard, ReduceLROnPlateau
 from keras.layers import Reshape, Conv2D, Input, Lambda, UpSampling2D, MaxPooling2D, LeakyReLU, BatchNormalization
+from keras import layers
 from keras.models import Model, load_model
 from keras.optimizers import Adam
 from keras.layers.merge import concatenate
@@ -90,12 +92,12 @@ def add_mn(x):
 def get_model():
     """ Build MobileNetV1 model """
     print('=> Building MobileNetV1 model...')
-    small_incepv3 = myInceptionV3(weights='imagenet', input_shape=(448, 448, 3), include_top=False)
+    small_incepv3 = myInceptionV3(weights='imagenet', input_shape=(224, 224, 3), include_top=False)
     # print('small_incepv3.summary()', small_incepv3.summary())
     small_incepv3 = Model(inputs=small_incepv3.inputs, outputs=small_incepv3.layers[-84].input)
     # print(small_incepv3.summary())
     x = small_incepv3(input_image)
-    x = add_mn2(x)
+    x = add_mn(x)
     x = Conv2D(N_BOX * (4 + 1 + CLASS), (1, 1), strides=(1, 1), padding='same', name='conv_23')(x)
     output = Reshape((GRID_H, GRID_W, N_BOX, 4 + 1 + CLASS))(x)
 
@@ -197,8 +199,8 @@ def get_pretrained_mn1():
 
 def get_darknet_with_myIncepv3():
     """ Build MobileNetV1 model """
-    print('=> Building new model...')
-    small_incepv3 = myInceptionV3(weights='imagenet', input_shape=(448, 448, 3), include_top=False)
+    print('=> Building MobileNetV1 model...')
+    small_incepv3 = myInceptionV3(weights='imagenet', input_shape=(224, 224, 3), include_top=False)
     # print('small_incepv3.summary()', small_incepv3.summary())
     small_incepv3 = Model(inputs=small_incepv3.inputs, outputs=small_incepv3.layers[-84].input)
     print(small_incepv3.summary())
@@ -208,6 +210,7 @@ def get_darknet_with_myIncepv3():
     output = Reshape((GRID_H, GRID_W, N_BOX, 4 + 1 + CLASS))(x)
 
     # small hack to allow true_boxes to be registered when Keras build the model
+    # for more information: https://github.com/fchollet/keras/issues/2790
     output = Lambda(lambda args: args[0])([output, true_boxes])
 
     model = Model([input_image, true_boxes], output)
@@ -231,14 +234,16 @@ def train(model):
                                mode='min',
                                verbose=1)
 
-    checkpoint = ModelCheckpoint('transferLearning_model.h5',
+    checkpoint = ModelCheckpoint('dlp_tla_mn224_e1_1001.h5',
                                  monitor='val_loss',
                                  verbose=1,
                                  save_best_only=True,
                                  mode='min',
                                  period=1)
 
-    # model.load_weights('./transferLearning_model.h5')
+    reduce_lr = ReduceLROnPlateau(patience=0, factor=0.2, monitor='val_loss', verbose=1)
+
+    # model.load_weights('./transferLearning_mn_224_0_04425.h5')
 
     tb_counter = len([log for log in os.listdir(os.path.expanduser('./tl_tf_logs/')) if 'uecfood100' in log]) + 1
     tensorboard = TensorBoard(log_dir=os.path.expanduser('~/tf_log/') + 'transferLearning_uecfood100' + '_' + str(tb_counter),
@@ -253,14 +258,18 @@ def train(model):
 
     model.compile(loss=custom_loss, optimizer=optimizer)
 
-    model.fit_generator(generator=train_batch,
-                        steps_per_epoch=len(train_batch),
-                        epochs=20,  # 100
-                        verbose=1,
-                        validation_data=valid_batch,
-                        validation_steps=len(valid_batch),
-                        callbacks=[early_stop, checkpoint, tensorboard],
-                        max_queue_size=3)
+    hist = model.fit_generator(generator=train_batch,
+                               steps_per_epoch=len(train_batch),
+                               epochs=20,      # 100
+                               verbose=1,
+                               validation_data=valid_batch,
+                               validation_steps=len(valid_batch),
+                               callbacks=[early_stop, checkpoint, tensorboard, reduce_lr],
+                               max_queue_size=3)
+
+    loss_hist = hist.history['loss']
+    np_loss_hist = np.array(loss_hist)
+    np.savetxt('loss_history_dlp_tla_mn224_e20_1001.txt', np_loss_hist, delimiter=',')
 
 
 def custom_loss(y_true, y_pred):
@@ -432,7 +441,7 @@ if __name__ == '__main__':
     ''' Initiailize parameters '''
     LABELS = read_category()
 
-    IMAGE_H, IMAGE_W = 448, 448  # must equal to GRID_H * 32  416, 416
+    IMAGE_H, IMAGE_W = 224, 224  # must equal to GRID_H * 32  416, 416
     GRID_H, GRID_W = 7, 7        # 13, 13
     N_BOX = 5
     CLASS = len(LABELS)
@@ -500,5 +509,7 @@ if __name__ == '__main__':
     true_boxes = Input(shape=(1, 1, 1, TRUE_BOX_BUFFER, 4))
 
     model = get_pretrained_mn1()
+    # model = get_darknet_with_myIncepv3()
+    # model = get_model()
 
     train(model)

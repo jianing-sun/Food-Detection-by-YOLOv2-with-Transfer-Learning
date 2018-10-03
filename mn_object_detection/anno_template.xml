@@ -4,8 +4,8 @@
   <path>/Volumes/JS/UECFOOD100_JS/1/1.jpg</path>
   <size>
     <width>800</width>
-    <width>600</width>
-    <width>3</width>
+    <height>600</height>
+    <depth>3</depth>
   </size>
   <object>
     <name>rice</name>

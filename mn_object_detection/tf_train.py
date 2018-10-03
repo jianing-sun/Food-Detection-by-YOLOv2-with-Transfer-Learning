@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 
-from keras.callbacks import EarlyStopping, ModelCheckpoint, TensorBoard
+from keras.callbacks import EarlyStopping, ModelCheckpoint, TensorBoard, ReduceLROnPlateau
 from keras.layers import Reshape, Conv2D, Input, Lambda, UpSampling2D, MaxPooling2D, LeakyReLU, BatchNormalization
 from keras import layers
 from keras.models import Model, load_model
@@ -234,14 +234,16 @@ def train(model):
                                mode='min',
                                verbose=1)
 
-    checkpoint = ModelCheckpoint('transferLearning_mn_224.h5',
+    checkpoint = ModelCheckpoint('dlp_tla_mn224_e1_1001.h5',
                                  monitor='val_loss',
                                  verbose=1,
                                  save_best_only=True,
                                  mode='min',
                                  period=1)
 
-    model.load_weights('./transferLearning_mn_224_0_04425.h5')
+    reduce_lr = ReduceLROnPlateau(patience=0, factor=0.2, monitor='val_loss', verbose=1)
+
+    # model.load_weights('./transferLearning_mn_224_0_04425.h5')
 
     tb_counter = len([log for log in os.listdir(os.path.expanduser('./tl_tf_logs/')) if 'uecfood100' in log]) + 1
     tensorboard = TensorBoard(log_dir=os.path.expanduser('~/tf_log/') + 'transferLearning_uecfood100' + '_' + str(tb_counter),
@@ -250,20 +252,24 @@ def train(model):
                               write_images=False)
 
     # TODO: try different optimizer and tweak parameters (in MNv1 paper they used RMSprop)
-    optimizer = Adam(lr=1e-6, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.0)
+    optimizer = Adam(lr=1e-4, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.0)
     # optimizer = SGD(lr=1e-4, decay=0.0005, momentum=0.9)
     # optimizer = RMSprop(lr=1e-5, rho=0.9, epsilon=1e-08, decay=0.0)
 
     model.compile(loss=custom_loss, optimizer=optimizer)
 
-    model.fit_generator(generator=train_batch,
-                        steps_per_epoch=len(train_batch),
-                        epochs=20,  # 100
-                        verbose=1,
-                        validation_data=valid_batch,
-                        validation_steps=len(valid_batch),
-                        callbacks=[early_stop, checkpoint, tensorboard],
-                        max_queue_size=3)
+    hist = model.fit_generator(generator=train_batch,
+                               steps_per_epoch=len(train_batch),
+                               epochs=20,      # 100
+                               verbose=1,
+                               validation_data=valid_batch,
+                               validation_steps=len(valid_batch),
+                               callbacks=[early_stop, checkpoint, tensorboard, reduce_lr],
+                               max_queue_size=3)
+
+    loss_hist = hist.history['loss']
+    np_loss_hist = np.array(loss_hist)
+    np.savetxt('loss_history_dlp_tla_mn224_e20_1001.txt', np_loss_hist, delimiter=',')
 
 
 def custom_loss(y_true, y_pred):
