@@ -4,3 +4,4 @@
 *.jpeg
 *.weights
 *.h5
+*.npy
