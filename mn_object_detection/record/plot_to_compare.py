@@ -28,26 +28,30 @@ def plot(txt1_path_list, txt2_path_list):
     print(txt1_path_list[:epochs])
     print(txt2_path_list[:epochs])
 
-    x = np.linspace(0, len(txt1_path_list[:epochs]) - 1, len(txt1_path_list[:epochs]), dtype=int)
+    x = np.linspace(1, len(txt1_path_list[:epochs]), len(txt1_path_list[:epochs]), dtype=int)
 
-    plt.plot(x, txt1_path_list[:epochs], label='MobileNet', alpha=0.7)
-    plt.plot(x, txt2_path_list[:epochs], label='TLA-MobileNet', alpha=0.7)
-    # plt.axhline(txt2_path_list[8], linestyle='--', color='g', linewidth=1, alpha=0.5)
+    plt.plot(x, txt1_path_list[:epochs], label='Darknet', alpha=0.7)
+    plt.plot(x, txt2_path_list[:epochs], label='TLA-Darknet', alpha=0.7)
 
-    plt.scatter(8, txt2_path_list[8], color='r', marker='o', alpha=1, label='epoch=8, loss=0.30 (TLA-MobileNet)')
-    plt.scatter(16, txt1_path_list[16], color='g', marker='o', alpha=1, label='epoch=16, loss=0.45 (MobileNet)')
+    plt.xlim([0, 17.5])
+    plt.xticks(np.arange(0, 17.5, 1))
+
+    plt.scatter(16, txt1_path_list[15], color='g', marker='o', alpha=1, label='epoch=17, loss=0.45 (Darknet)')
+    plt.scatter(7, txt2_path_list[6], color='r', marker='o', alpha=1, label='epoch=8, loss=0.41 (TLA-Darknet)')
+    plt.axvline(7, linestyle='--', color='g', linewidth=1, alpha=0.4)
+    plt.axvline(16, linestyle='--', color='g', linewidth=1, alpha=0.4)
 
     plt.xlabel('epoch')
     plt.ylabel('loss')
-    plt.legend()
+    plt.legend(loc='upper right')
     plt.grid(True, alpha=0.4)
 
     name = txt1_path.split('/')[1] + '_' + txt2_path.split('/')[1]
     plt.savefig(os.path.join(name))
 
 
-txt1_path = './tf_log_1003_mn224_normal/loss.txt'
-txt2_path = './tf_log_mn224_tla_1004_gcp_1/mn224_tla_1004_gcp_loss_hist.txt'
+txt1_path = './darknet_416_normal_1009_gcp/darknet_416_normal_1009_gcp_loss_hist.txt'
+txt2_path = './darknet_416_tla_1009_gcp/darknet_416_tla_1009_gcp_loss_hist.txt'
 txt1_path_list, txt2_path_list = compare_loss(txt1_path, txt2_path)
 
 plot(txt1_path_list, txt2_path_list)

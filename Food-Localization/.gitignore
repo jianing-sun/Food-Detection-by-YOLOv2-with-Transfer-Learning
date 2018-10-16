@@ -1,0 +1,6 @@
+*.npy
+*.ipynb_checkpoints
+*.jpg
+*.jpeg
+*.weights
+*.h5

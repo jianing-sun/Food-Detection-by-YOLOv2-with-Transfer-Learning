@@ -10,6 +10,8 @@ from keras.utils import Sequence
 from utils import BoundBox, bbox_iou
 
 
+import torch
+
 def parse_annotation(ann_dir, img_dir, labels=[]):
     all_imgs = []
     seen_labels = {}
@@ -80,7 +82,6 @@ class BatchGenerator(Sequence):
 
         ### augmentors by https://github.com/aleju/imgaug
         sometimes = lambda aug: iaa.Sometimes(0.5, aug)
-
         # Define our sequence of augmentation steps that will be applied to every image
         # All augmenters with per_channel=0.5 will sample one value _per image_
         # in 50% of all cases. In all other cases they will sample new values
@@ -141,7 +142,8 @@ class BatchGenerator(Sequence):
             random_order=True
         )
 
-        if shuffle: np.random.shuffle(self.images)
+        if shuffle:
+            np.random.shuffle(self.images)
 
     def __len__(self):
         return int(np.ceil(float(len(self.images)) / self.config['BATCH_SIZE']))

@@ -2,6 +2,7 @@ import os
 import cv2
 from keras.applications import inception_v3
 from keras_applications.mobilenet import MobileNet
+from keras.applications.resnet50 import resnet50
 
 import matplotlib.pyplot as plt
 import numpy as np

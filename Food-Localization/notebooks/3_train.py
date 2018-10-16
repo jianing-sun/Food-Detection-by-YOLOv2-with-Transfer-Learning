@@ -1,12 +1,13 @@
 import numpy as np
 from keras import callbacks
 from keras import losses, optimizers
-from keras.applications import inception_v3, mobilenet
+from keras.applications import inception_v3, mobilenet, mobilenetv2
 from keras.layers import Dense, GlobalAveragePooling2D, Dropout
 from keras.models import Model, load_model
 from keras.preprocessing.image import ImageDataGenerator
 from keras.utils import np_utils
 from keras.layers import UpSampling2D
+
 
 RANDOM_SEED = 43
 np.random.seed(RANDOM_SEED)
@@ -40,7 +41,7 @@ y_val = np_utils.to_categorical(y_val)
 # ** Make model **
 # Base model
 # base_model = inception_v3.InceptionV3(weights='imagenet', include_top=False, input_shape=(499, 499, 3))
-base_model = inception_v3.myInceptionV3(weights='imagenet', include_top=False, input_shape=(448, 448, 3))
+base_model = mobilenetv2.MobileNetV2(weights='imagenet', include_top=False, input_shape=(224, 224, 3))
 # Model
 x = base_model.output
 x = GlobalAveragePooling2D()(x)
@@ -63,7 +64,7 @@ model.compile(loss=loss, optimizer=optimizer, metrics=metrics)
 
 # Callbacks
 m_q = 'val_loss'
-model_path = './models/model_foodvsnot_v3.h5'
+model_path = './models/mnv2_224_foodornot_1.h5'
 check_pt = callbacks.ModelCheckpoint(filepath=model_path, monitor=m_q, save_best_only=True, verbose=1)
 early_stop = callbacks.EarlyStopping(patience=1, monitor=m_q, verbose=1)
 reduce_lr = callbacks.ReduceLROnPlateau(patience=0, factor=0.33, monitor=m_q, verbose=1)
@@ -88,7 +89,7 @@ model.fit_generator(datagen.flow(X_train, y_train, batch_size=batch_size),
 print('Top Model Train Done.')
 
 # Load the model
-model = load_model('./models/model_foodvsnot_v3.h5')
+model = load_model('./models/mnv2_224_foodornot_1.h5')
 
 # ** Configuation **
 # Open layers
@@ -107,7 +108,7 @@ model.compile(loss=loss, optimizer=optimizer, metrics=metrics)
 
 # Callbacks
 m_q = 'val_loss'
-model_path = './models/model_foodvsnot_v3.h5'
+model_path = './models/mnv2_224_foodornot_2.h5'
 check_pt = callbacks.ModelCheckpoint(filepath=model_path, monitor=m_q, save_best_only=True, verbose=1)
 early_stop = callbacks.EarlyStopping(patience=1, monitor=m_q, verbose=1)
 reduce_lr = callbacks.ReduceLROnPlateau(patience=0, factor=0.33, monitor=m_q, verbose=1)
