@@ -27,6 +27,10 @@ class BoundBox:
 
         return self.score
 
+    def get_conf(self):
+
+        return self.c
+
 
 class WeightReader:
     def __init__(self, weight_file):

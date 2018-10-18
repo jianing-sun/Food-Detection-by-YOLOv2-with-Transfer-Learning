@@ -106,4 +106,4 @@ if __name__ == '__main__':
     model = get_normal_mn1()
     model.load_weights('./record/mnv2_224_1007_normal/mnv2224_normal_1007_gcp.h5')
 
-    average_precisions = evaluate(model, valid_batch, obj_thresh=0.3, net_h=224, net_w=224)
+    average_precisions = evaluate(model, valid_batch, obj_thresh=0.5, net_h=224, net_w=224)

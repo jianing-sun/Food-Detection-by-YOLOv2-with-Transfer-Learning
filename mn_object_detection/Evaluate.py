@@ -22,7 +22,7 @@ def makedirs(path):
 def evaluate(model,
              generator,
              iou_threshold=0.5,
-             obj_thresh=0.3,
+             obj_thresh=0.5,
              nms_thresh=0.3,
              net_h=224,
              net_w=224,
@@ -50,10 +50,11 @@ def evaluate(model,
     # for i in range(generator.size()):
     for i in range(len(generator)):
         # raw_image = [generator.load_image(i)]Q
-        raw_image = [img for img in generator[0][0][i]]
+        raw_image = [img for img in generator[i][0][0]]
         # make the boxes and the labels
-        pred_boxes = get_yolo_boxes(model, raw_image, net_h, net_w, generator.config['ANCHORS'], obj_thresh, nms_thresh, labels)[0]
+        pred_boxes = get_yolo_boxes(i, model, raw_image, net_h, net_w, generator.config['ANCHORS'], obj_thresh, nms_thresh, labels)[0]
 
+        # TODO: 'NoneType' object is not iterable
         score = np.array([box.get_score() for box in pred_boxes])
         pred_labels = np.array([box.label for box in pred_boxes])
 
@@ -62,7 +63,7 @@ def evaluate(model,
         else:
             pred_boxes = np.array([[]])
 
-            # sort the boxes and the labels according to scores
+        # sort the boxes and the labels according to scores
         score_sort = np.argsort(-score)
         pred_labels = pred_labels[score_sort]
         pred_boxes = pred_boxes[score_sort]
@@ -280,7 +281,7 @@ def normalize(image):
     return image / 255.
 
 
-def get_yolo_boxes(model, images, net_h, net_w, anchors, obj_thresh, nms_thresh, labels):
+def get_yolo_boxes(idx, model, images, net_h, net_w, anchors, obj_thresh, nms_thresh, labels):
 
     image_h, image_w, _ = images[0].shape
     nb_images = len(images)
@@ -326,28 +327,31 @@ def get_yolo_boxes(model, images, net_h, net_w, anchors, obj_thresh, nms_thresh,
                                obj_threshold=obj_thresh)
 
         # correct the sizes of the bounding boxes
-        boxes = correct_yolo_boxes(boxes, image_h, image_w, net_h, net_w)
+        correct_yolo_boxes(boxes, image_h, image_w, net_h, net_w)
 
         # suppress non-maximal boxes
-        boxes = do_nms(boxes, nms_thresh)
+        do_nms(boxes, nms_thresh)
 
         batch_boxes[i] = boxes
 
-        for box in boxes:
-            xmin = int(box.xmin)
-            ymin = int(box.ymin)
-            xmax = int(box.xmax)
-            ymax = int(box.ymax)
+        if boxes is not None:
+            for box in boxes:
+                xmin = int(box.xmin)
+                ymin = int(box.ymin)
+                xmax = int(box.xmax)
+                ymax = int(box.ymax)
 
-            ax.add_patch(Rectangle((xmin, ymin), xmax - xmin, ymax - ymin,
-                                   facecolor='none', edgecolor='green', linewidth=3.0))
-            ax.text(xmin, ymax, labels[box.get_label()] + ' ' + str(box.get_score()),
-                    backgroundcolor='limegreen')
+                ax.add_patch(Rectangle((xmin, ymin), xmax - xmin, ymax - ymin,
+                                       facecolor='none', edgecolor='green', linewidth=3.0))
+                ax.text(xmin, ymax, labels[box.get_label()] + ' ' + str('{0:.3f}'.format(box.get_conf())),
+                        backgroundcolor='limegreen', alpha=0.5)
 
         # image = draw_boxes(batch_input[i], ax, boxes, labels=labels)
+        else:
+            pass
 
-        # plt.imshow(image)
-        plt.show()
+        result_path = '/Volumes/JS/uecfood100_result/mn_normal_Ocb16/'
+        fig.savefig(result_path + str(idx) + '_%s' % str(i) + '.png')
 
     return batch_boxes
 
@@ -361,13 +365,13 @@ def draw_boxes(image, ax, boxes, labels):
         xmax = int(box.xmax)
         ymax = int(box.ymax)
 
-        # cv2.rectangle(image, (xmin, ymin), (xmax, ymax), (255, 255, 255), 1)
-        # cv2.putText(image,
-        #             labels[box.get_label()] + ' ' + str(box.get_score()),
-        #             (xmin, ymin - 13),
-        #             cv2.FONT_HERSHEY_SIMPLEX,
-        #             1e-3 * image_h,
-        #             (255, 255, 255), 1)
+        cv2.rectangle(image, (xmin, ymin), (xmax, ymax), (255, 255, 255), 1)
+        cv2.putText(image,
+                    labels[box.get_label()] + ' ' + str(box.get_score()),
+                    (xmin, ymin - 13),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    1e-3 * image_h,
+                    (255, 255, 255), 1)
 
         ax.add_patch(Rectangle((xmin, ymin), xmax-xmin, ymax-ymin,
                                facecolor='none', edgecolor='blue', linewidth=3.0))
