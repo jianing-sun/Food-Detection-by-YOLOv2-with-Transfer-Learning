@@ -9,8 +9,8 @@ from keras.utils import Sequence
 
 from utils import BoundBox, bbox_iou
 
-
 import torch
+
 
 def parse_annotation(ann_dir, img_dir, labels=[]):
     all_imgs = []
@@ -206,9 +206,9 @@ class BatchGenerator(Sequence):
                         obj_indx = self.config['LABELS'].index(obj['name'])
 
                         center_w = (obj['xmax'] - obj['xmin']) / (
-                                    float(self.config['IMAGE_W']) / self.config['GRID_W'])  # unit: grid cell
+                                float(self.config['IMAGE_W']) / self.config['GRID_W'])  # unit: grid cell
                         center_h = (obj['ymax'] - obj['ymin']) / (
-                                    float(self.config['IMAGE_H']) / self.config['GRID_H'])  # unit: grid cell
+                                float(self.config['IMAGE_H']) / self.config['GRID_H'])  # unit: grid cell
 
                         box = [center_x, center_y, center_w, center_h]
 
@@ -241,7 +241,7 @@ class BatchGenerator(Sequence):
                         true_box_index = true_box_index % self.config['TRUE_BOX_BUFFER']
 
             # assign input image to x_batch
-            if self.norm != None:
+            if self.norm is not None:
                 x_batch[instance_count] = self.norm(img)
             else:
                 # plot image and bounding boxes for sanity check
@@ -302,14 +302,18 @@ class BatchGenerator(Sequence):
         # fix object's position and size
         for obj in all_objs:
             for attr in ['xmin', 'xmax']:
-                if jitter: obj[attr] = int(obj[attr] * scale - offx)
+                if jitter:
+                    obj[attr] = int(obj[attr] * scale - offx)
 
+                # convert annotation from raw size to net input size
                 obj[attr] = int(obj[attr] * float(self.config['IMAGE_W']) / w)
                 obj[attr] = max(min(obj[attr], self.config['IMAGE_W']), 0)
 
             for attr in ['ymin', 'ymax']:
-                if jitter: obj[attr] = int(obj[attr] * scale - offy)
+                if jitter:
+                    obj[attr] = int(obj[attr] * scale - offy)
 
+                # convert annotation from raw size to net input size
                 obj[attr] = int(obj[attr] * float(self.config['IMAGE_H']) / h)
                 obj[attr] = max(min(obj[attr], self.config['IMAGE_H']), 0)
 

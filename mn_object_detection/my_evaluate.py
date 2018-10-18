@@ -37,6 +37,29 @@ def get_normal_mn1():
     return model
 
 
+def get_pretrained_mn1():
+    alpha, depth_multiplier = 1, 1
+    print('=> Building new model with pretrained MobilenetV1...')
+
+    pretrained_gap_model = load_model('./models/gap_foodnotfood_mn1_224.h5')
+    print(pretrained_gap_model.summary())
+    model = Model(inputs=pretrained_gap_model.input, outputs=pretrained_gap_model.layers[-6].input)
+    print(model.summary())
+    x = model(input_image)
+    x = _depthwise_conv_block(x, 1024, alpha, depth_multiplier,
+                              strides=(2, 2), block_id=12)
+    x = _depthwise_conv_block(x, 1024, alpha, depth_multiplier, block_id=13)
+
+    x = Conv2D(N_BOX * (4 + 1 + CLASS), (1, 1), strides=(1, 1), padding='same', name='conv_23')(x)
+    output = Reshape((GRID_H, GRID_W, N_BOX, 4 + 1 + CLASS))(x)
+    output = Lambda(lambda args: args[0])([output, true_boxes])
+
+    model = Model([input_image, true_boxes], output)
+    print(model.summary())
+    print('Finish new model.')
+    return model
+
+
 if __name__ == '__main__':
 
     ''' Initiailize parameters '''
@@ -102,6 +125,7 @@ if __name__ == '__main__':
                                  generator_config,
                                  norm=normalize,
                                  jitter=False)
+
     valid_batch = BatchGenerator(all_imgs[train_valid_split:],
                                  generator_config,
                                  norm=normalize,
@@ -112,11 +136,12 @@ if __name__ == '__main__':
     true_boxes = Input(shape=(1, 1, 1, TRUE_BOX_BUFFER, 4))
 
     model = get_normal_mn1()
-    model.load_weights('./record/mnv2_224_1007_normal/mnv2224_normal_1007_gcp.h5')
+    model.load_weights('./record/tf_log_1003_mn224_normal/mn224_normal_1003_gcp.h5')
+    print(model.summary())
 
     average_precisions = evaluate(model, valid_batch, iou_threshold=0.5)
 
-    with open('/Volumes/JS/Result_uecfood100/mnv1_224_Oct16_map.txt', 'w') as map_result:
+    with open('/Volumes/JS/Result_uecfood100/mnv1_normal_Oct17_map.txt', 'w') as map_result:
         for label, average_precision in average_precisions.items():
             print(LABELS[label] + ': {:.4f}'.format(average_precision))
             map_result.write(LABELS[label] + ': {:.4f}'.format(average_precision) + '\n')

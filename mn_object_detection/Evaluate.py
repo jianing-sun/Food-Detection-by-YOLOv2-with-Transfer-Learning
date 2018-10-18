@@ -448,6 +448,8 @@ def _softmax(x, axis=-1):
 def evaluate(model,
              generator,
              iou_threshold=0.5,
+             image_w=224,
+             image_h=224,
              score_threshold=0.3,
              max_detections=100,
              save_path=None):
@@ -481,12 +483,15 @@ def evaluate(model,
         pred_labels = np.array([box.label for box in pred_boxes])
 
         if len(pred_boxes) > 0:
-            pred_boxes = np.array([[box.xmin * raw_width, box.ymin * raw_height, box.xmax * raw_width,
-                                    box.ymax * raw_height, box.score] for box in pred_boxes])
+            pred_boxes = np.array([[min(int(box.xmin * raw_width), raw_width),
+                                    min(int(box.ymin * raw_height), raw_height),
+                                    min(int(box.xmax * raw_width), raw_width),
+                                    min(int(box.ymax * raw_height), raw_height),
+                                    box.score] for box in pred_boxes])
         else:
             pred_boxes = np.array([[]])
 
-            # sort the boxes and the labels according to scores
+        # sort the boxes and the labels according to scores
         score_sort = np.argsort(-score)
         pred_labels = pred_labels[score_sort]
         pred_boxes = pred_boxes[score_sort]
@@ -562,8 +567,11 @@ def evaluate(model,
 
 
 def predict(idx, image, anchors, model, labels):
-    image = cv2.resize(image, (224, 224))
     image_h, image_w, _ = image.shape
+    fig, ax = plt.subplots(nrows=1, ncols=1)
+    ax.imshow(image[:, :, ::-1])
+
+    image = cv2.resize(image, (224, 224))
     image = image / 255.
 
     input_image = image[:, :, ::-1]
@@ -571,28 +579,27 @@ def predict(idx, image, anchors, model, labels):
     dummy_array = np.zeros((1, 1, 1, 1, 15, 4))
 
     netout = model.predict([input_image, dummy_array])[0]
+
+    anchors = [4.33, 3.64, 6.92, 6.26, 10.81, 7.48, 10.81, 4.86, 12.20, 9.29]
     boxes = decode_netout(netout, anchors, 100)
 
-    fig, ax = plt.subplots(nrows=1, ncols=1)
-    ax.imshow(image[:, :, ::-1])
-
     # remove axes
-    plt.gca().xaxis.set_major_locator(plt.NullLocator())
-    plt.gca().yaxis.set_major_locator(plt.NullLocator())
+    # plt.gca().xaxis.set_major_locator(plt.NullLocator())
+    # plt.gca().yaxis.set_major_locator(plt.NullLocator())
 
     if boxes is not None:
         for box in boxes:
-            xmin = int(box.xmin * image_w)
-            ymin = int(box.ymin * image_h)git
-            xmax = int(box.xmax * image_w)
-            ymax = int(box.ymax * image_h)
+            xmin = min(int(box.xmin * image_w), image_w)
+            ymin = min(int(box.ymin * image_h), image_h)
+            xmax = min(int(box.xmax * image_w), image_w)
+            ymax = min(int(box.ymax * image_h), image_h)
 
             ax.add_patch(Rectangle((xmin, ymin), xmax - xmin, ymax - ymin,
                                    facecolor='none', edgecolor='green', linewidth=3.0))
             ax.text(xmin, ymax, labels[box.get_label()] + ' ' + str('{0:.3f}'.format(box.get_conf())),
                     backgroundcolor='limegreen', alpha=0.5)
 
-    result_path = '/Volumes/JS/Result_uecfood100/mn_normal_Ocb16/'
+    result_path = '/Volumes/JS/Result_uecfood100/mnv1_normal_Oct17_map/'
     fig.savefig(result_path + str(idx) + '.png')
 
     return boxes
