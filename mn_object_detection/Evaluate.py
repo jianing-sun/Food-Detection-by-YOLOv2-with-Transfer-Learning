@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 import os
-from utils import BoundBox, bbox_iou, read_category
+from utils import BoundBox, bbox_iou, decode_netout, read_category
 from scipy.special import expit
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
@@ -19,123 +19,125 @@ def makedirs(path):
             raise
 
 
-def evaluate(model,
-             generator,
-             iou_threshold=0.5,
-             obj_thresh=0.5,
-             nms_thresh=0.3,
-             net_h=224,
-             net_w=224,
-             save_path=None):
-    """ Evaluate a given dataset using a given model.
-    code originally from https://github.com/fizyr/keras-retinanet
-
-    # Arguments
-        model           : The model to evaluate.
-        generator       : The generator that represents the dataset to evaluate.
-        iou_threshold   : The threshold used to consider when a detection is positive or negative.
-        obj_thresh      : The threshold used to distinguish between object and non-object
-        nms_thresh      : The threshold used to determine whether two detections are duplicates
-        net_h           : The height of the input image to the model, higher value results in better accuracy
-        net_w           : The width of the input image to the model
-        save_path       : The path to save images with visualized detections to.
-    # Returns
-        A dict mapping class names to mAP scores.
-    """
-    # gather all detections and annotations
-    all_detections = [[None for i in range(generator.num_classes())] for j in range(generator.size())]
-    all_annotations = [[None for i in range(generator.num_classes())] for j in range(generator.size())]
-    labels = read_category()
-
-    # for i in range(generator.size()):
-    for i in range(len(generator)):
-        # raw_image = [generator.load_image(i)]Q
-        raw_image = [img for img in generator[i][0][0]]
-        # make the boxes and the labels
-        pred_boxes = get_yolo_boxes(i, model, raw_image, net_h, net_w, generator.config['ANCHORS'], obj_thresh, nms_thresh, labels)[0]
-
-        # TODO: 'NoneType' object is not iterable
-        score = np.array([box.get_score() for box in pred_boxes])
-        pred_labels = np.array([box.label for box in pred_boxes])
-
-        if len(pred_boxes) > 0:
-            pred_boxes = np.array([[box.xmin, box.ymin, box.xmax, box.ymax, box.get_score()] for box in pred_boxes])
-        else:
-            pred_boxes = np.array([[]])
-
-        # sort the boxes and the labels according to scores
-        score_sort = np.argsort(-score)
-        pred_labels = pred_labels[score_sort]
-        pred_boxes = pred_boxes[score_sort]
-
-        # copy detections to all_detections
-        for label in range(generator.num_classes()):
-            all_detections[i][label] = pred_boxes[pred_labels == label, :]
-
-        annotations = generator.load_annotation(i)
-
-        # copy detections to all_annotations
-        for label in range(generator.num_classes()):
-            all_annotations[i][label] = annotations[annotations[:, 4] == label, :4].copy()
-
-    # compute mAP by comparing all detections and all annotations
-    average_precisions = {}
-
-    for label in range(generator.num_classes()):
-        false_positives = np.zeros((0,))
-        true_positives = np.zeros((0,))
-        scores = np.zeros((0,))
-        num_annotations = 0.0
-
-        for i in range(generator.size()):
-            detections = all_detections[i][label]
-            annotations = all_annotations[i][label]
-            num_annotations += annotations.shape[0]
-            detected_annotations = []
-
-            for d in detections:
-                scores = np.append(scores, d[4])
-
-                if annotations.shape[0] == 0:
-                    false_positives = np.append(false_positives, 1)
-                    true_positives = np.append(true_positives, 0)
-                    continue
-
-                overlaps = compute_overlap(np.expand_dims(d, axis=0), annotations)
-                assigned_annotation = np.argmax(overlaps, axis=1)
-                max_overlap = overlaps[0, assigned_annotation]
-
-                if max_overlap >= iou_threshold and assigned_annotation not in detected_annotations:
-                    false_positives = np.append(false_positives, 0)
-                    true_positives = np.append(true_positives, 1)
-                    detected_annotations.append(assigned_annotation)
-                else:
-                    false_positives = np.append(false_positives, 1)
-                    true_positives = np.append(true_positives, 0)
-
-        # no annotations -> AP for this class is 0 (is this correct?)
-        if num_annotations == 0:
-            average_precisions[label] = 0
-            continue
-
-        # sort by score
-        indices = np.argsort(-scores)
-        false_positives = false_positives[indices]
-        true_positives = true_positives[indices]
-
-        # compute false positives and true positives
-        false_positives = np.cumsum(false_positives)
-        true_positives = np.cumsum(true_positives)
-
-        # compute recall and precision
-        recall = true_positives / num_annotations
-        precision = true_positives / np.maximum(true_positives + false_positives, np.finfo(np.float64).eps)
-
-        # compute average precision
-        average_precision = compute_ap(recall, precision)
-        average_precisions[label] = average_precision
-
-    return average_precisions
+# def evaluate(model,
+#              generator,
+#              iou_threshold=0.5,
+#              obj_thresh=0.5,
+#              nms_thresh=0.3,
+#              net_h=224,
+#              net_w=224,
+#              save_path=None):
+#     """ Evaluate a given dataset using a given model.
+#     code originally from https://github.com/fizyr/keras-retinanet
+#
+#     # Arguments
+#         model           : The model to evaluate.
+#         generator       : The generator that represents the dataset to evaluate.
+#         iou_threshold   : The threshold used to consider when a detection is positive or negative.
+#         obj_thresh      : The threshold used to distinguish between object and non-object
+#         nms_thresh      : The threshold used to determine whether two detections are duplicates
+#         net_h           : The height of the input image to the model, higher value results in better accuracy
+#         net_w           : The width of the input image to the model
+#         save_path       : The path to save images with visualized detections to.
+#     # Returns
+#         A dict mapping class names to mAP scores.
+#     """
+#     # gather all detections and annotations
+#     all_detections = [[None for i in range(generator.num_classes())] for j in range(generator.size())]
+#     all_annotations = [[None for i in range(generator.num_classes())] for j in range(generator.size())]
+#     labels = read_category()
+#
+#     for i in range(generator.size()):
+#         # raw_image = [generator.load_image(i)]Q
+#         raw_image = [img for img in generator[i][0][0]]
+#         # make the boxes and the labels
+#         pred_boxes = get_yolo_boxes(i, model, raw_image, net_h, net_w, generator.config['ANCHORS'], obj_thresh, nms_thresh, labels)[0]
+#
+#         score = np.array([box.get_score() for box in pred_boxes])
+#         pred_labels = np.array([box.label for box in pred_boxes])
+#
+#         if len(pred_boxes) > 0:
+#             pred_boxes = np.array([[box.xmin, box.ymin, box.xmax, box.ymax, box.get_score()] for box in pred_boxes])[0]
+#         else:
+#             pred_boxes = np.array([[]])
+#
+#         # sort the boxes and the labels according to scores
+#         score_sort = np.argsort(-score)
+#         pred_labels = pred_labels[score_sort]
+#         pred_boxes = pred_boxes[score_sort]
+#
+#         # copy detections to all_detections
+#         for label in range(generator.num_classes()):
+#             all_detections[i][label] = pred_boxes[pred_labels == label, :]
+#
+#         annotations = generator.load_annotation(i)
+#
+#         # copy detections to all_annotations
+#         for label in range(generator.num_classes()):
+#             all_annotations[i][label] = annotations[annotations[:, 4] == label, :4].copy()
+#
+#     # compute mAP by comparing all detections and all annotations
+#     average_precisions = {}
+#
+#     for label in range(generator.num_classes()):
+#         false_positives = np.zeros((0,))
+#         true_positives = np.zeros((0,))
+#         scores = np.zeros((0,))
+#         num_annotations = 0.0
+#
+#         for i in range(generator.size()):
+#             detections = all_detections[i][label]
+#             annotations = all_annotations[i][label]
+#             if annotations is None:
+#                 num_annotations = 0
+#             else:
+#                 num_annotations += annotations.shape[0]
+#             detected_annotations = []
+#
+#             if detections is not None:
+#                 for d in detections:
+#                     scores = np.append(scores, d[4])
+#
+#                     if annotations.shape[0] == 0:
+#                         false_positives = np.append(false_positives, 1)
+#                         true_positives = np.append(true_positives, 0)
+#                         continue
+#
+#                     overlaps = compute_overlap(np.expand_dims(d, axis=0), annotations)
+#                     assigned_annotation = np.argmax(overlaps, axis=1)
+#                     max_overlap = overlaps[0, assigned_annotation]
+#
+#                     if max_overlap >= iou_threshold and assigned_annotation not in detected_annotations:
+#                         false_positives = np.append(false_positives, 0)
+#                         true_positives = np.append(true_positives, 1)
+#                         detected_annotations.append(assigned_annotation)
+#                     else:
+#                         false_positives = np.append(false_positives, 1)
+#                         true_positives = np.append(true_positives, 0)
+#
+#         # no annotations -> AP for this class is 0 (is this correct?)
+#         if num_annotations == 0:
+#             average_precisions[label] = 0
+#             continue
+#
+#         # sort by score
+#         indices = np.argsort(-scores)
+#         false_positives = false_positives[indices]
+#         true_positives = true_positives[indices]
+#
+#         # compute false positives and true positives
+#         false_positives = np.cumsum(false_positives)
+#         true_positives = np.cumsum(true_positives)
+#
+#         # compute recall and precision
+#         recall = true_positives / num_annotations
+#         precision = true_positives / np.maximum(true_positives + false_positives, np.finfo(np.float64).eps)
+#
+#         # compute average precision
+#         average_precision = compute_ap(recall, precision)
+#         average_precisions[label] = average_precision
+#
+#     return average_precisions
 
 
 def correct_yolo_boxes(boxes, image_h, image_w, net_h, net_w):
@@ -222,37 +224,37 @@ def do_nms(boxes, nms_thresh):
 #     return boxes
 
 
-def decode_netout(netout, anchors, obj_threshold=0.3):
-    grid_h, grid_w, nb_box = netout.shape[:3]
-
-    boxes = []
-
-    # decode the output by the network
-    netout[..., 4] = _sigmoid(netout[..., 4])
-    netout[..., 5:] = netout[..., 4][..., np.newaxis] * _softmax(netout[..., 5:])
-    netout[..., 5:] *= netout[..., 5:] > obj_threshold
-
-    for row in range(grid_h):
-        for col in range(grid_w):
-            for b in range(nb_box):
-                # from 4th element onwards are confidence and class classes
-                classes = netout[row, col, b, 5:]
-
-                if np.sum(classes) > 0:
-                    # first 4 elements are x, y, w, and h
-                    x, y, w, h = netout[row, col, b, :4]
-
-                    x = (col + _sigmoid(x)) / grid_w  # center position, unit: image width
-                    y = (row + _sigmoid(y)) / grid_h  # center position, unit: image height
-                    w = anchors[2 * b + 0] * np.exp(w) / grid_w  # unit: image width
-                    h = anchors[2 * b + 1] * np.exp(h) / grid_h  # unit: image height
-                    confidence = netout[row, col, b, 4]
-
-                    box = BoundBox(x - w / 2, y - h / 2, x + w / 2, y + h / 2, confidence, classes)
-
-                    boxes.append(box)
-
-    return boxes
+# def decode_netout(netout, anchors, obj_threshold=0.3):
+#     grid_h, grid_w, nb_box = netout.shape[:3]
+#
+#     boxes = []
+#
+#     # decode the output by the network
+#     netout[..., 4] = _sigmoid(netout[..., 4])
+#     netout[..., 5:] = netout[..., 4][..., np.newaxis] * _softmax(netout[..., 5:])
+#     netout[..., 5:] *= netout[..., 5:] > obj_threshold
+#
+#     for row in range(grid_h):
+#         for col in range(grid_w):
+#             for b in range(nb_box):
+#                 # from 4th element onwards are confidence and class classes
+#                 classes = netout[row, col, b, 5:]
+#
+#                 if np.sum(classes) > 0:
+#                     # first 4 elements are x, y, w, and h
+#                     x, y, w, h = netout[row, col, b, :4]
+#
+#                     x = (col + _sigmoid(x)) / grid_w  # center position, unit: image width
+#                     y = (row + _sigmoid(y)) / grid_h  # center position, unit: image height
+#                     w = anchors[2 * b + 0] * np.exp(w) / grid_w  # unit: image width
+#                     h = anchors[2 * b + 1] * np.exp(h) / grid_h  # unit: image height
+#                     confidence = netout[row, col, b, 4]
+#
+#                     box = BoundBox(x - w / 2, y - h / 2, x + w / 2, y + h / 2, confidence, classes)
+#
+#                     boxes.append(box)
+#
+#     return boxes
 
 
 def preprocess_input(image, net_h, net_w):
@@ -350,7 +352,7 @@ def get_yolo_boxes(idx, model, images, net_h, net_w, anchors, obj_thresh, nms_th
         else:
             pass
 
-        result_path = '/Volumes/JS/uecfood100_result/mn_normal_Ocb16/'
+        result_path = '/Volumes/JS/Result_uecfood100/mn_normal_Ocb16/'
         fig.savefig(result_path + str(idx) + '_%s' % str(i) + '.png')
 
     return batch_boxes
@@ -441,3 +443,156 @@ def _softmax(x, axis=-1):
     e_x = np.exp(x)
 
     return e_x / e_x.sum(axis, keepdims=True)
+
+
+def evaluate(model,
+             generator,
+             iou_threshold=0.5,
+             score_threshold=0.3,
+             max_detections=100,
+             save_path=None):
+    """ Evaluate a given dataset using a given model.
+    code originally from https://github.com/fizyr/keras-retinanet
+    # Arguments
+        generator       : The generator that represents the dataset to evaluate.
+        model           : The model to evaluate.
+        iou_threshold   : The threshold used to consider when a detection is positive or negative.
+        score_threshold : The score confidence threshold to use for detections.
+        max_detections  : The maximum number of detections to use per image.
+        save_path       : The path to save images with visualized detections to.
+    # Returns
+        A dict mapping class names to mAP scores.
+    """
+    # gather all detections and annotations
+    all_detections = [[None for i in range(generator.num_classes())] for j in range(generator.size())]
+    all_annotations = [[None for i in range(generator.num_classes())] for j in range(generator.size())]
+
+    labels = read_category()
+
+    for i in range(generator.size()):
+        raw_image = generator.load_image(i)
+
+        raw_height, raw_width, raw_channels = raw_image.shape
+
+        # make the boxes and the labels
+        pred_boxes = predict(i, raw_image, generator.config['ANCHORS'], model, labels)
+
+        score = np.array([box.score for box in pred_boxes])
+        pred_labels = np.array([box.label for box in pred_boxes])
+
+        if len(pred_boxes) > 0:
+            pred_boxes = np.array([[box.xmin * raw_width, box.ymin * raw_height, box.xmax * raw_width,
+                                    box.ymax * raw_height, box.score] for box in pred_boxes])
+        else:
+            pred_boxes = np.array([[]])
+
+            # sort the boxes and the labels according to scores
+        score_sort = np.argsort(-score)
+        pred_labels = pred_labels[score_sort]
+        pred_boxes = pred_boxes[score_sort]
+
+        # copy detections to all_detections
+        for label in range(generator.num_classes()):
+            all_detections[i][label] = pred_boxes[pred_labels == label, :]
+
+        annotations = generator.load_annotation(i)
+
+        # copy detections to all_annotations
+        for label in range(generator.num_classes()):
+            all_annotations[i][label] = annotations[annotations[:, 4] == label, :4].copy()
+
+    # compute mAP by comparing all detections and all annotations
+    average_precisions = {}
+
+    for label in range(generator.num_classes()):
+        false_positives = np.zeros((0,))
+        true_positives = np.zeros((0,))
+        scores = np.zeros((0,))
+        num_annotations = 0.0
+
+        for i in range(generator.size()):
+            detections = all_detections[i][label]
+            annotations = all_annotations[i][label]
+            num_annotations += annotations.shape[0]
+            detected_annotations = []
+
+            for d in detections:
+                scores = np.append(scores, d[4])
+
+                if annotations.shape[0] == 0:
+                    false_positives = np.append(false_positives, 1)
+                    true_positives = np.append(true_positives, 0)
+                    continue
+
+                overlaps = compute_overlap(np.expand_dims(d, axis=0), annotations)
+                assigned_annotation = np.argmax(overlaps, axis=1)
+                max_overlap = overlaps[0, assigned_annotation]
+
+                if max_overlap >= iou_threshold and assigned_annotation not in detected_annotations:
+                    false_positives = np.append(false_positives, 0)
+                    true_positives = np.append(true_positives, 1)
+                    detected_annotations.append(assigned_annotation)
+                else:
+                    false_positives = np.append(false_positives, 1)
+                    true_positives = np.append(true_positives, 0)
+
+        # no annotations -> AP for this class is 0 (is this correct?)
+        if num_annotations == 0:
+            average_precisions[label] = 0
+            continue
+
+        # sort by score
+        indices = np.argsort(-scores)
+        false_positives = false_positives[indices]
+        true_positives = true_positives[indices]
+
+        # compute false positives and true positives
+        false_positives = np.cumsum(false_positives)
+        true_positives = np.cumsum(true_positives)
+
+        # compute recall and precision
+        recall = true_positives / num_annotations
+        precision = true_positives / np.maximum(true_positives + false_positives, np.finfo(np.float64).eps)
+
+        # compute average precision
+        average_precision = compute_ap(recall, precision)
+        average_precisions[label] = average_precision
+
+    return average_precisions
+
+
+def predict(idx, image, anchors, model, labels):
+    image = cv2.resize(image, (224, 224))
+    image_h, image_w, _ = image.shape
+    image = image / 255.
+
+    input_image = image[:, :, ::-1]
+    input_image = np.expand_dims(input_image, 0)
+    dummy_array = np.zeros((1, 1, 1, 1, 15, 4))
+
+    netout = model.predict([input_image, dummy_array])[0]
+    boxes = decode_netout(netout, anchors, 100)
+
+    fig, ax = plt.subplots(nrows=1, ncols=1)
+    ax.imshow(image[:, :, ::-1])
+
+    # remove axes
+    plt.gca().xaxis.set_major_locator(plt.NullLocator())
+    plt.gca().yaxis.set_major_locator(plt.NullLocator())
+
+    if boxes is not None:
+        for box in boxes:
+            xmin = int(box.xmin * image_w)
+            ymin = int(box.ymin * image_h)git
+            xmax = int(box.xmax * image_w)
+            ymax = int(box.ymax * image_h)
+
+            ax.add_patch(Rectangle((xmin, ymin), xmax - xmin, ymax - ymin,
+                                   facecolor='none', edgecolor='green', linewidth=3.0))
+            ax.text(xmin, ymax, labels[box.get_label()] + ' ' + str('{0:.3f}'.format(box.get_conf())),
+                    backgroundcolor='limegreen', alpha=0.5)
+
+    result_path = '/Volumes/JS/Result_uecfood100/mn_normal_Ocb16/'
+    fig.savefig(result_path + str(idx) + '.png')
+
+    return boxes

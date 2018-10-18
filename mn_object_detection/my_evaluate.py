@@ -38,6 +38,7 @@ def get_normal_mn1():
 
 
 if __name__ == '__main__':
+
     ''' Initiailize parameters '''
     LABELS = read_category()
 
@@ -97,8 +98,15 @@ if __name__ == '__main__':
 
     train_valid_split = int(0.8 * len(all_imgs))
 
-    train_batch = BatchGenerator(all_imgs[:train_valid_split], generator_config, norm=normalize, jitter=False)
-    valid_batch = BatchGenerator(all_imgs[train_valid_split:], generator_config, norm=normalize, jitter=False)
+    train_batch = BatchGenerator(all_imgs[:train_valid_split],
+                                 generator_config,
+                                 norm=normalize,
+                                 jitter=False)
+    valid_batch = BatchGenerator(all_imgs[train_valid_split:],
+                                 generator_config,
+                                 norm=normalize,
+                                 jitter=False,
+                                 shuffle=False)
 
     input_image = Input(shape=(IMAGE_H, IMAGE_W, 3))
     true_boxes = Input(shape=(1, 1, 1, TRUE_BOX_BUFFER, 4))
@@ -106,4 +114,14 @@ if __name__ == '__main__':
     model = get_normal_mn1()
     model.load_weights('./record/mnv2_224_1007_normal/mnv2224_normal_1007_gcp.h5')
 
-    average_precisions = evaluate(model, valid_batch, obj_thresh=0.5, net_h=224, net_w=224)
+    average_precisions = evaluate(model, valid_batch, iou_threshold=0.5)
+
+    with open('/Volumes/JS/Result_uecfood100/mnv1_224_Oct16_map.txt', 'w') as map_result:
+        for label, average_precision in average_precisions.items():
+            print(LABELS[label] + ': {:.4f}'.format(average_precision))
+            map_result.write(LABELS[label] + ': {:.4f}'.format(average_precision) + '\n')
+        print('mAP: {:.4f}'.format(sum(average_precisions.values()) / len(average_precisions)))
+        map_result.write('\n\n\n')
+        map_result.write('mAP: {:.4f}'.format(sum(average_precisions.values()) / len(average_precisions)))
+
+
