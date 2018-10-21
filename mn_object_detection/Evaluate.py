@@ -4,6 +4,7 @@ import os
 from utils import BoundBox, bbox_iou, decode_netout, read_category
 from scipy.special import expit
 import matplotlib.pyplot as plt
+from keras_applications.mobilenet_v2 import MobileNetV2
 from matplotlib.patches import Rectangle
 
 
@@ -438,13 +439,6 @@ def compute_ap(recall, precision):
     return ap
 
 
-def _softmax(x, axis=-1):
-    x = x - np.amax(x, axis, keepdims=True)
-    e_x = np.exp(x)
-
-    return e_x / e_x.sum(axis, keepdims=True)
-
-
 def evaluate(model,
              generator,
              iou_threshold=0.5,
@@ -477,7 +471,7 @@ def evaluate(model,
         raw_height, raw_width, raw_channels = raw_image.shape
 
         # make the boxes and the labels
-        pred_boxes = predict(i, raw_image, generator.config['ANCHORS'], model, labels)
+        pred_boxes = predict(i, raw_image, model, labels)
 
         score = np.array([box.score for box in pred_boxes])
         pred_labels = np.array([box.label for box in pred_boxes])
@@ -566,7 +560,14 @@ def evaluate(model,
     return average_precisions
 
 
-def predict(idx, image, anchors, model, labels):
+def _softmax(x, axis=-1):
+    x = x - np.amax(x, axis, keepdims=True)
+    e_x = np.exp(x)
+
+    return e_x / e_x.sum(axis, keepdims=True)
+
+
+def predict(idx, image, model, labels):
     image_h, image_w, _ = image.shape
     fig, ax = plt.subplots(nrows=1, ncols=1)
     ax.imshow(image[:, :, ::-1])
@@ -576,30 +577,35 @@ def predict(idx, image, anchors, model, labels):
 
     input_image = image[:, :, ::-1]
     input_image = np.expand_dims(input_image, 0)
-    dummy_array = np.zeros((1, 1, 1, 1, 15, 4))
+    dummy_array = np.zeros((1, 1, 1, 1, 50, 4))
 
     netout = model.predict([input_image, dummy_array])[0]
 
     anchors = [4.33, 3.64, 6.92, 6.26, 10.81, 7.48, 10.81, 4.86, 12.20, 9.29]
+    # anchors = [1.91, 1.61, 3.53, 2.97, 5.04, 4.38, 6.20, 3.33, 6.67, 4.90]
+
     boxes = decode_netout(netout, anchors, 100)
 
-    # remove axes
+    # box_colors = ['#FF0000', '#FFFF00', '#00FF00', '#0000FF', '#00FFFF', '#FF00FF',
+    #               '#FFA500', '#FF3700', '#800080', '#00FF19']
+    #
+    # # # remove axes
     # plt.gca().xaxis.set_major_locator(plt.NullLocator())
     # plt.gca().yaxis.set_major_locator(plt.NullLocator())
-
-    if boxes is not None:
-        for box in boxes:
-            xmin = min(int(box.xmin * image_w), image_w)
-            ymin = min(int(box.ymin * image_h), image_h)
-            xmax = min(int(box.xmax * image_w), image_w)
-            ymax = min(int(box.ymax * image_h), image_h)
-
-            ax.add_patch(Rectangle((xmin, ymin), xmax - xmin, ymax - ymin,
-                                   facecolor='none', edgecolor='green', linewidth=3.0))
-            ax.text(xmin, ymax, labels[box.get_label()] + ' ' + str('{0:.3f}'.format(box.get_conf())),
-                    backgroundcolor='limegreen', alpha=0.5)
-
-    result_path = '/Volumes/JS/Result_uecfood100/mnv1_normal_Oct17_map/'
-    fig.savefig(result_path + str(idx) + '.png')
+    #
+    # if boxes is not None:
+    #     for i, box in enumerate(boxes):
+    #         xmin = min(int(box.xmin * image_w), image_w)
+    #         ymin = min(int(box.ymin * image_h), image_h)
+    #         xmax = min(int(box.xmax * image_w), image_w)
+    #         ymax = min(int(box.ymax * image_h), image_h)
+    #
+    #         ax.add_patch(Rectangle((xmin, ymin), xmax - xmin, ymax - ymin,
+    #                                facecolor='none', edgecolor=box_colors[i], linewidth=3.0))
+    #         ax.text(xmin, ymax, labels[box.get_label()] + ' ' + str('{0:.3f}'.format(box.get_conf())),
+    #                 backgroundcolor=box_colors[i], alpha=1)
+    #
+    # result_path = '/Volumes/JS/Result_uecfood100/mnv2_tla_Oct18_map_nms0_4/'
+    # fig.savefig(result_path + str(idx) + '.png')
 
     return boxes

@@ -9,8 +9,6 @@ from keras.utils import Sequence
 
 from utils import BoundBox, bbox_iou
 
-import torch
-
 
 def parse_annotation(ann_dir, img_dir, labels=[]):
     all_imgs = []
