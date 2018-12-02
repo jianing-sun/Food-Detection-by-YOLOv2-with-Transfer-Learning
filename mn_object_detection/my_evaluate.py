@@ -38,7 +38,6 @@ def get_normal_mn1():
     output = Lambda(lambda args: args[0])([output, true_boxes])
 
     model = Model([input_image, true_boxes], output)
-    print(model.summary())
     return model
 
 
@@ -78,8 +77,12 @@ def get_pretrained_mn1():
     print('=> Building new model with pretrained MobilenetV1...')
 
     pretrained_gap_model = load_model('./models/gap_foodnotfood_mn1_224.h5')
-    print(pretrained_gap_model.summary())
+    # print(pretrained_gap_model.summary())
     model = Model(inputs=pretrained_gap_model.input, outputs=pretrained_gap_model.layers[-6].input)
+
+    # for layer in model.layers:
+    #     layer.trainable = False
+
     print(model.summary())
     x = model(input_image)
     x = _depthwise_conv_block(x, 1024, alpha, depth_multiplier,
@@ -94,6 +97,46 @@ def get_pretrained_mn1():
     print(model.summary())
     print('Finish new model.')
     return model
+
+
+def get_pretrained_rn18():
+    alpha, depth_multiplier = 1, 1
+    print('=> Building new model with pretrained ResNet18...')
+
+    pretrained_gap_model = load_model('./record/rn18_tla_Oct22/rn18_224_foodornot_2.h5')
+    # print(pretrained_gap_model.summary())
+    model = Model(inputs=pretrained_gap_model.input, outputs=pretrained_gap_model.layers[-3].input)
+    # print(model.summary())
+
+    x = model(input_image)
+    x = Conv2D(N_BOX * (4 + 1 + CLASS), (1, 1), strides=(1, 1), padding='same', name='conv_23')(x)
+    output = Reshape((GRID_H, GRID_W, N_BOX, 4 + 1 + CLASS))(x)
+    output = Lambda(lambda args: args[0])([output, true_boxes])
+
+    model = Model([input_image, true_boxes], output)
+    #     print(model.summary())
+    print('Finish new model.')
+    return model
+
+
+def get_rn18():
+    from keras import backend as K
+    from ResNet34 import ResnetBuilder
+
+    K.set_image_dim_ordering('tf')
+    model = ResnetBuilder.build_resnet_18((3, 224, 224), 1)
+    print(model.summary())
+    model = Model(inputs=model.input, outputs=model.layers[-3].input)
+    print(model.summary())
+    x = model(input_image)
+    x = Conv2D(N_BOX * (4 + 1 + CLASS), (1, 1), strides=(1, 1), padding='same', name='conv_23')(x)
+    output = Reshape((GRID_H, GRID_W, N_BOX, 4 + 1 + CLASS))(x)
+    output = Lambda(lambda args: args[0])([output, true_boxes])
+
+    resnet18_normal = Model([input_image, true_boxes], output)
+    print(model.summary())
+    print('Finish new model.')
+    return resnet18_normal
 
 
 def get_pretrained_mn2():
@@ -425,7 +468,7 @@ if __name__ == '__main__':
 
     ''' Initiailize parameters '''
     LABELS = read_category()
-
+    print(LABELS)
     IMAGE_H, IMAGE_W = 224, 224  # must equal to GRID_H * 32  416, 416
     GRID_H, GRID_W = 7, 7  # 13, 13
     N_BOX = 5
@@ -496,34 +539,41 @@ if __name__ == '__main__':
     input_image = Input(shape=(IMAGE_H, IMAGE_W, 3))
     true_boxes = Input(shape=(1, 1, 1, TRUE_BOX_BUFFER, 4))
 
-    # model = get_normal_mn1()
-    # model.load_weights('./record/tf_log_1003_mn224_normal/mn224_normal_1003_gcp.h5')
-    # # model.load_weights('./record/test.h5')
-    # print(model.summary())
+    model = get_normal_mn1()
+    model.load_weights('./record/tf_log_1003_mn224_normal/all_imgs_mobile_net_valloss0_17.h5')
+    print(model.summary())
 
     # model = get_pretrained_mn1()
-    # model.load_weights('./record/tf_log_mn224_tla_1004_gcp/mn224_tla_1004_gcp.h5')
+    # model.load_weights('./record/mn_tla_256/mn1_256_tla_Oct25.h5')
     # print(model.summary())
 
     # model = get_normal_mn2()
-    # model.load_weights('./record/mn2_normal_1018_gcp/mn2_normal_1018_gcp.h5')
+    # model.load_weights('./record/mn2_256/mn2_normal_Oct22_256.h5')
     # print(model.summary())
 
     # model = get_pretrained_mn2()
-    # model.load_weights('./record/mnv2_224_1007_tla/mnv2_224_tla_1007_gcp.h5')
+    # model.load_weights('./record/mn2_tla_256/mn2_256_tla_Oct24.h5')
     # print(model.summary())
 
-    model = get_darknet()
-    model.load_weights('./record/darknet_416_normal_1009_gcp/darknet_416_normal_1009_gcp.h5')
-    print(model.summary())
+    # model = get_darknet()
+    # model.load_weights('./record/darknet_416_normal_1009_gcp/darknet_416_normal_1009_gcp.h5')
+    # print(model.summary())
 
     # model = get_pretrained_darknet()
     # model.load_weights('./record/darknet_416_normal_1009_gcp/darknet_416_normal_1009_gcp.h5')
     # print(model.summary())
 
+    # model = get_rn18()
+    # model.load_weights('./record/rn18_normal_256/rn18_normal_Oct23_256.h5')
+    # print(model.summary())
+
+    # model = get_pretrained_rn18()
+    # model.load_weights('./record/rn18_256_tla/rn18_256_tla_Oct24.h5')
+    # print(model.summary())
+
     average_precisions = evaluate(model, valid_batch, iou_threshold=0.5)
 
-    with open('./evaluation_results/mn2_normal_Oct18_map_IOU0_9.txt', 'w') as map_result:
+    with open('./evaluation_results/mn_normal_Nov01_android_IoU0_5.txt', 'w') as map_result:
         for label, average_precision in average_precisions.items():
             print(LABELS[label] + ': {:.4f}'.format(average_precision))
             map_result.write(LABELS[label] + ': {:.4f}'.format(average_precision) + '\n')

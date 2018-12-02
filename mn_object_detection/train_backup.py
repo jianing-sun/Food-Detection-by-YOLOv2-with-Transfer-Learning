@@ -305,15 +305,15 @@ if __name__ == '__main__':
     print('=> Generate BatchGenerator.')
     batches = BatchGenerator(all_imgs, generator_config)
 
-    img = batches[0][0][0][5]
-    plt.imshow(img.astype('uint8'))
+    # img = batches[0][0][0][5]
+    # plt.imshow(img.astype('uint8'))
     # plt_example_batch(batches, BATCH_SIZE)
 
     ''' Start training '''
     train_valid_split = int(0.8 * len(all_imgs))
 
-    train_batch = BatchGenerator(all_imgs[:train_valid_split], generator_config, norm=normalize, jitter=False)
-    valid_batch = BatchGenerator(all_imgs[train_valid_split:], generator_config, norm=normalize, jitter=False)
+    train_batch = BatchGenerator(all_imgs[:train_valid_split], generator_config, norm=normalize, jitter=True)
+    valid_batch = BatchGenerator(all_imgs[train_valid_split:], generator_config, norm=normalize, jitter=True)
 
     input_image = Input(shape=(IMAGE_H, IMAGE_W, 3))
     true_boxes = Input(shape=(1, 1, 1, TRUE_BOX_BUFFER, 4))

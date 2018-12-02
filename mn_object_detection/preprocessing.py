@@ -4,10 +4,6 @@ import xml.etree.ElementTree as ET
 
 import cv2
 import numpy as np
-from imgaug import augmenters as iaa
-from keras.utils import Sequence
-
-from utils import BoundBox, bbox_iou
 
 
 def parse_annotation(ann_dir, img_dir, labels=[]):
@@ -58,6 +54,13 @@ def parse_annotation(ann_dir, img_dir, labels=[]):
             all_imgs += [img]
 
     return all_imgs, seen_labels
+
+
+from imgaug import augmenters as iaa
+
+from keras.utils import Sequence
+
+from utils import BoundBox, bbox_iou
 
 
 class BatchGenerator(Sequence):
@@ -156,6 +159,15 @@ class BatchGenerator(Sequence):
         annots = []
 
         for obj in self.images[i]['object']:
+            print(obj['name'])
+            # if obj['name'][-1] == ' ':
+            #     obj['name'] = obj['name'][:-1]
+            # if obj['name'] == 'fermented soybeans':
+            #     obj['name'] = 'natto'
+            # if obj['name'] == 'beef steak':
+            #     obj['name'] = 'steak'
+            # if obj['name'] == 'rolled omelet':
+            #     obj['name'] = 'omelet'
             annot = [obj['xmin'], obj['ymin'], obj['xmax'], obj['ymax'], self.config['LABELS'].index(obj['name'])]
             annots += [annot]
 
@@ -289,7 +301,8 @@ class BatchGenerator(Sequence):
 
             ### flip the image
             flip = np.random.binomial(1, .5)
-            if flip > 0.5: image = cv2.flip(image, 1)
+            if flip > 0.5:
+                image = cv2.flip(image, 1)
 
             image = self.aug_pipe.augment_image(image)
 

@@ -584,6 +584,9 @@ def predict(idx, image, model, labels):
     anchors = [4.33, 3.64, 6.92, 6.26, 10.81, 7.48, 10.81, 4.86, 12.20, 9.29]
     # anchors = [1.91, 1.61, 3.53, 2.97, 5.04, 4.38, 6.20, 3.33, 6.67, 4.90]
 
+    # uecfood256
+    # anchors = [2.27, 1.93, 3.87, 3.03, 5.27, 4.30, 6.23, 3.29, 6.56, 4.77]
+
     boxes = decode_netout(netout, anchors, 100)
 
     # box_colors = ['#FF0000', '#FFFF00', '#00FF00', '#0000FF', '#00FFFF', '#FF00FF',
@@ -604,8 +607,8 @@ def predict(idx, image, model, labels):
     #                                facecolor='none', edgecolor=box_colors[i], linewidth=3.0))
     #         ax.text(xmin, ymax, labels[box.get_label()] + ' ' + str('{0:.3f}'.format(box.get_conf())),
     #                 backgroundcolor=box_colors[i], alpha=1)
-    #
-    # result_path = '/Volumes/JS/Result_uecfood100/mnv2_tla_Oct18_map_nms0_4/'
+    # # #
+    # result_path = '/Volumes/JS/Result_uecfood100/mn2_tla_256/'
     # fig.savefig(result_path + str(idx) + '.png')
 
     return boxes
