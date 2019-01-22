@@ -1,0 +1,260 @@
+rice: 0.7842
+eels on rice: 0.7889
+pilaf: 0.7770
+chicken-'n'-egg on rice: 0.8417
+pork cutlet on rice: 0.9356
+beef curry: 0.8034
+sushi: 0.5997
+chicken rice: 0.6136
+fried rice: 0.7833
+tempura bowl: 0.8940
+bibimbap: 0.8573
+toast: 0.5992
+croissant: 0.6141
+roll bread: 0.5951
+raisin bread: 0.7657
+chip butty: 0.4505
+hamburger: 0.6587
+pizza: 0.9550
+sandwiches: 0.5933
+udon noodle: 0.6920
+tempura udon: 0.6819
+soba noodle: 0.7856
+ramen noodle: 0.9301
+beef noodle: 0.8956
+tensin noodle: 0.8947
+fried noodle: 0.7713
+spaghetti: 0.5629
+Japanese-style pancake: 0.8952
+takoyaki: 0.7561
+gratin: 0.8342
+sauteed vegetables: 0.6515
+croquette: 0.4681
+grilled eggplant: 0.5995
+sauteed spinach: 0.8731
+vegetable tempura: 0.6236
+miso soup: 0.7789
+potage: 0.7913
+sausage: 0.2875
+oden: 0.7025
+omelet: 0.5372
+ganmodoki: 0.4910
+jiaozi: 0.5976
+stew: 0.6409
+teriyaki grilled fish: 0.4362
+fried fish: 0.3341
+grilled salmon: 0.1697
+salmon meuniere : 0.4421
+sashimi: 0.6194
+grilled pacific saury : 0.4780
+sukiyaki: 0.7326
+sweet and sour pork: 0.8126
+lightly roasted fish: 0.7431
+steamed egg hotchpotch: 0.5458
+tempura: 0.6410
+fried chicken: 0.5596
+sirloin cutlet : 0.4164
+nanbanzuke: 0.5091
+boiled fish: 0.5375
+seasoned beef with potatoes: 0.8071
+hambarg steak: 0.4257
+beef steak: 0.2483
+dried fish: 0.6608
+ginger pork saute: 0.3607
+spicy chili-flavored tofu: 0.9292
+yakitori: 0.8566
+cabbage roll: 0.7676
+rolled omelet: 0.4632
+egg sunny-side up: 0.1419
+fermented soybeans: 0.5864
+cold tofu: 0.5280
+egg roll: 0.5357
+chilled noodle: 0.8767
+stir-fried beef and peppers: 0.7475
+simmered pork: 0.7973
+boiled chicken and vegetables: 0.6539
+sashimi bowl: 0.8699
+sushi bowl: 0.7820
+fish-shaped pancake with bean jam: 0.8500
+shrimp with chill source: 0.7848
+roast chicken: 0.6916
+steamed meat dumpling: 0.4931
+omelet with fried rice: 0.7135
+cutlet curry: 0.7414
+spaghetti meat sauce: 0.8675
+fried shrimp: 0.6117
+potato salad: 0.6949
+green salad: 0.3570
+macaroni salad: 0.7113
+Japanese tofu and vegetable chowder: 0.6920
+pork miso soup: 0.8529
+chinese soup: 0.7341
+beef bowl: 0.8189
+kinpira-style sauteed burdock: 0.7649
+rice ball: 0.2334
+pizza toast: 0.7542
+dipping noodles: 0.0903
+hot dog: 0.6004
+french fries: 0.3971
+mixed rice: 0.7478
+goya chanpuru: 0.7561
+green curry: 0.7022
+okinawa soba: 0.9375
+mango pudding: 0.7308
+almond jelly: 0.8830
+jjigae: 0.7895
+dak galbi: 0.8750
+dry curry: 0.9535
+kamameshi: 0.8719
+rice vermicelli: 0.6667
+paella: 0.7083
+tanmen: 0.7634
+kushikatu: 0.9216
+yellow curry: 0.6464
+pancake: 0.9929
+champon: 0.8917
+crape: 0.5860
+tiramisu: 0.8934
+waffle: 0.9111
+rare cheese cake: 0.8068
+shortcake: 0.9231
+chop suey: 0.6361
+twice cooked pork: 0.8045
+mushroom risotto: 0.9065
+samul: 0.9833
+zoni: 0.7471
+french toast: 0.9048
+fine white noodles: 0.7933
+minestrone: 0.7776
+pot au feu: 0.8446
+chicken nugget: 0.7962
+namero: 0.9233
+french bread: 0.8329
+rice gruel: 0.9154
+broiled eel bowl: 0.8847
+clear soup: 0.5953
+yudofu: 0.8311
+mozuku: 0.9800
+inarizushi: 0.8735
+pork loin cutlet: 0.6428
+pork fillet cutlet: 0.8618
+chicken cutlet: 0.6917
+ham cutlet: 0.8419
+minced meat cutlet: 0.7176
+thinly sliced raw horsemeat: 0.8675
+bagel: 0.9005
+scone: 0.7778
+tortilla: 0.8080
+tacos: 0.6645
+nachos: 0.9751
+meat loaf: 0.0000
+scrambled egg: 0.6081
+rice gratin: 0.8235
+lasagna: 0.9378
+Caesar salad: 0.9894
+oatmeal: 0.9457
+fried pork dumplings served in soup: 0.9541
+oshiruko: 0.6229
+muffin: 0.8950
+popcorn: 1.0000
+cream puff: 0.7383
+doughnut: 0.7524
+apple pie: 0.8421
+parfait: 0.9333
+fried pork in scoop: 0.8655
+lamb kebabs: 0.9600
+dish consisting of stir-fried potato, eggplant and green pepper: 0.9548
+roast duck: 0.8636
+hot pot: 0.6823
+pork belly: 0.6381
+xiao long bao: 0.7200
+moon cake: 0.8000
+custard tart: 0.8571
+beef noodle soup: 0.7617
+pork cutlet: 0.9118
+minced pork rice: 0.8316
+fish ball soup: 0.8202
+oyster omelette: 0.7391
+glutinous oil rice: 0.9636
+trunip pudding: 0.8800
+stinky tofu: 1.0000
+lemon fig jelly: 0.7368
+khao soi: 0.9150
+Sour prawn soup: 0.8391
+Thai papaya salad: 0.9217
+boned, sliced Hainan-style chicken with marinated rice: 0.9881
+hot and sour, fish and vegetable ragout: 0.9048
+stir-fried mixed vegetables: 0.8929
+beef in oyster sauce: 0.8529
+pork satay: 0.8036
+spicy chicken salad: 0.8346
+noodles with fish curry: 0.8517
+Pork Sticky Noodles: 0.7857
+Pork with lemon: 0.7143
+stewed pork leg: 0.7325
+charcoal-boiled pork neck: 0.9032
+fried mussel pancakes: 0.8000
+Deep Fried Chicken Wing: 0.8974
+Barbecued red pork in sauce with rice: 0.7783
+Rice with roast duck: 0.9442
+Rice crispy pork: 0.7369
+Wonton soup: 0.8822
+Chicken Rice Curry With Coconut: 0.9091
+Crispy Noodles: 0.8615
+Egg Noodle In Chicken Yellow Curry: 0.8363
+coconut milk soup: 0.7791
+pho: 0.8623
+Hue beef rice vermicelli soup: 0.9622
+Vermicelli noodles with snails: 0.7456
+Fried spring rolls: 0.7551
+Steamed rice roll: 0.8192
+Shrimp patties: 0.7727
+ball shaped bun with pork: 0.6607
+Coconut milk-flavored crepes with shrimp and beef: 0.7937
+Small steamed savory rice pancake: 0.8494
+Glutinous Rice Balls: 0.5702
+loco moco: 0.7862
+haupia: 0.9027
+malasada: 0.8860
+laulau: 0.5553
+spam musubi: 0.8720
+oxtail soup: 0.8656
+adobo: 0.9040
+lumpia: 0.8588
+brownie: 0.8333
+churro: 0.9335
+jambalaya: 1.0000
+nasi goreng: 0.9092
+ayam goreng: 0.8182
+ayam bakar: 0.7763
+bubur ayam: 0.8429
+gulai: 0.7778
+laksa: 0.7895
+mie ayam: 0.9336
+mie goreng: 0.8827
+nasi campur: 0.8235
+nasi padang: 0.8800
+nasi uduk: 0.8421
+babi guling: 0.8194
+kaya toast: 0.8397
+bak kut teh: 0.8889
+curry puff: 0.8139
+chow mein: 0.8746
+zha jiang mian: 0.8783
+kung pao chicken: 1.0000
+crullers: 0.7940
+eggplant with garlic sauce: 0.8719
+three cup chicken: 0.8871
+bean curd family style: 0.8889
+salt & pepper fried shrimp with shell: 0.7646
+baked salmon: 0.8132
+braised pork meat ball with napa cabbage: 0.8110
+winter melon soup: 0.7349
+steamed spareribs: 0.8480
+chinese pumpkin pie: 0.8222
+eight treasure rice: 0.6990
+hot & sour soup: 0.8278
+
+
+
+mAP: 0.7601

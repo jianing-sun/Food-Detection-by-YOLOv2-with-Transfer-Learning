@@ -1,0 +1,41 @@
+{
+    "model" : {
+        "min_input_size":       224,
+        "max_input_size":       224,
+        "anchors":              [59,47, 106,90, 145,127, 180,150, 202,107, 217, 157],
+        "labels":               ""
+    },
+
+    "train": {
+        "train_image_folder":   "/Volumes/JS/UECFOOD100_JS/",
+        "train_annot_folder":   "/Volumes/JS/UECFOOD100_JS/",
+        "cache_name":           "",
+
+        "train_times":          8,
+        "pretrained_weights":   "",
+        "batch_size":           16,
+        "learning_rate":        1e-4,
+        "nb_epochs":            5,
+        "warmup_epochs":        3,
+        "ignore_thresh":        0.5,
+        "gpus":                 "0",
+
+        "grid_scales":          [1,1,1],
+        "obj_scale":            5,
+        "noobj_scale":          1,
+        "xywh_scale":           1,
+        "class_scale":          1,
+
+        "tensorboard_dir":      "./tf/logs",
+        "saved_weights_name":   "",
+        "debug":                false
+    },
+
+    "valid": {
+        "valid_image_folder":   "",
+        "valid_annot_folder":   "",
+        "cache_name":           "",
+
+        "valid_times":          1
+    }
+}

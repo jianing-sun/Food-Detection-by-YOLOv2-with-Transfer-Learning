@@ -1,0 +1,19 @@
+<annotation verified="yes">
+  <folder>UECFOOD100_JS/1</folder>
+  <filename>1.jpg</filename>
+  <path>/Volumes/JS/UECFOOD100_JS/1/1.jpg</path>
+  <size>
+    <width>800</width>
+    <width>600</width>
+    <width>3</width>
+  </size>
+  <object>
+    <name>rice</name>
+    <bndbox>
+      <xmin>0</xmin>
+      <ymin>143</ymin>
+      <xmax>370</xmax>
+      <ymax>486</ymax>
+    </bndbox>
+  </object>
+</annotation>

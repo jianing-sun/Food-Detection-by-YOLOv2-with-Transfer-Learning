@@ -1,0 +1,104 @@
+rice: 0.4546
+eels on rice: 0.3673
+pilaf: 0.6410
+chicken-'n'-egg on rice: 0.8329
+pork cutlet on rice: 0.7432
+beef curry: 0.5181
+sushi: 0.4875
+chicken rice: 0.7346
+fried rice: 0.6962
+tempura bowl: 0.6750
+bibimbap: 0.8577
+toast: 0.3523
+croissant: 0.3559
+roll bread: 0.2363
+raisin bread: 0.6468
+chip butty: 0.3149
+hamburger: 0.0939
+pizza: 0.7375
+sandwiches: 0.3274
+udon noodle: 0.5237
+tempura udon: 0.6702
+soba noodle: 0.4214
+ramen noodle: 0.7717
+beef noodle: 0.6979
+tensin noodle: 0.6099
+fried noodle: 0.6827
+spaghetti: 0.5458
+Japanese-style pancake: 0.7239
+takoyaki: 0.5661
+gratin: 0.5339
+sauteed vegetables: 0.5965
+croquette: 0.2991
+grilled eggplant: 0.5384
+sauteed spinach: 0.6245
+vegetable tempura: 0.4275
+miso soup: 0.4438
+potage: 0.6130
+sausage: 0.0048
+oden: 0.5009
+omelet: 0.3429
+ganmodoki: 0.2796
+jiaozi: 0.4559
+stew: 0.6795
+teriyaki grilled fish: 0.2279
+fried fish: 0.2572
+grilled salmon: 0.0651
+salmon meuniere : 0.3517
+sashimi: 0.4140
+grilled pacific saury : 0.1154
+sukiyaki: 0.8129
+sweet and sour pork: 0.4833
+lightly roasted fish: 0.6065
+steamed egg hotchpotch: 0.5720
+tempura: 0.4144
+fried chicken: 0.3654
+sirloin cutlet : 0.3955
+nanbanzuke: 0.4313
+boiled fish: 0.1865
+seasoned beef with potatoes: 0.7311
+hambarg steak: 0.2318
+beef steak: 0.2290
+dried fish: 0.5859
+ginger pork saute: 0.3625
+spicy chili-flavored tofu: 0.8964
+yakitori: 0.4262
+cabbage roll: 0.3876
+rolled omelet: 0.1885
+egg sunny-side up: 0.0814
+fermented soybeans: 0.1697
+cold tofu: 0.1435
+egg roll: 0.4964
+chilled noodle: 0.8025
+stir-fried beef and peppers: 0.6332
+simmered pork: 0.6059
+boiled chicken and vegetables: 0.5896
+sashimi bowl: 0.7110
+sushi bowl: 0.8941
+fish-shaped pancake with bean jam: 0.4542
+shrimp with chill source: 0.7321
+roast chicken: 0.3655
+steamed meat dumpling: 0.1855
+omelet with fried rice: 0.4285
+cutlet curry: 0.6602
+spaghetti meat sauce: 0.6331
+fried shrimp: 0.2733
+potato salad: 0.5102
+green salad: 0.2996
+macaroni salad: 0.7272
+Japanese tofu and vegetable chowder: 0.6949
+pork miso soup: 0.6223
+chinese soup: 0.6033
+beef bowl: 0.5409
+kinpira-style sauteed burdock: 0.0939
+rice ball: 0.0735
+pizza toast: 0.6617
+dipping noodles: 0.2983
+hot dog: 0.6964
+french fries: 0.4704
+mixed rice: 0.5203
+goya chanpuru: 0.7535
+
+
+
+mAP: 0.4879
