@@ -15,17 +15,17 @@ Note the structure of *Feature Extraction Network* and *Food Detection Network* 
 
 - The effect of transfer learning has been quantified by designing the following experiments on MobileNet:
 
-<img src="https://github.com/jianing-sun/Food-Detection-by-YOLOv2-with-Transfer-Learning/blob/master/asset/tl.png" height="500px" />
+<img src="https://github.com/jianing-sun/Food-Detection-by-YOLOv2-with-Transfer-Learning/blob/master/asset/tl.png" height="500px" width="800px"/>
 
 ​	and the result as below: 
 
-<img src="https://github.com/jianing-sun/Food-Detection-by-YOLOv2-with-Transfer-Learning/blob/master/asset/tlFig.png"  />
+<img src="https://github.com/jianing-sun/Food-Detection-by-YOLOv2-with-Transfer-Learning/blob/master/asset/tlFig.png" width="500px"/>
 
 - Some results for food detection with MobileNetV2 backend:
 
 <img src="https://github.com/jianing-sun/Food-Detection-by-YOLOv2-with-Transfer-Learning/blob/master/asset/results.png"  />
 
-##2. How to use it
+## 2. How to use it
 
 `cam to localize food` - train a food/non-food classifier and calculate Class Activation Mapping (CAM) with  a global averaging pooling (GAP) layer after removing the last several layers to get 14x14 resolution input to feed into the GAP.
 
@@ -51,5 +51,13 @@ Note the structure of *Feature Extraction Network* and *Food Detection Network* 
 
 `avg_iou.png` - trade-off between the number of anchor boxes with average IoU
 
+## 3. Related Work
 
+- [You Only Look Once: Unified, RealTime Object Detection (YOLOv1)](https://pjreddie.com/media/files/papers/yolo_1.pdf)
+- [YOLO9000: Better, Faster, Stronger (YOLOv2)](https://arxiv.org/pdf/1612.08242.pdf)
+- [How Transferable are Features in Deep Neural Networks](https://papers.nips.cc/paper/5347-how-transferable-are-features-in-deep-neural-networks.pdf)
+
+## 4. Code Reference
+
+- Keras-YOLO: https://github.com/experiencor
 
