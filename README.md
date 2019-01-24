@@ -2,7 +2,7 @@
 
 ## 1. What's this repo about
 
-- Hello, this is my project repo for my master degree of McGill University. I proposed a multi-object food detection architecture by deep convolutional neural networks (DCNN) with transferring features. In the world of computer vision, it could be pretty painful if you train everything from scratch. In my research, I pre-trained a food/non-food image classifier and then copy part of its weights to the food detectio neural networks.
+- Hello, this is the project repo for my Master degree at McGill University. I proposed a multi-object food detection architecture by deep convolutional neural networks (DCNN) with transferring features. In the world of computer vision, it could be pretty painful if you train everything from scratch. In my research, I pre-trained a food/non-food image classifier and then copy part of its weights to the food detectio neural networks. I achieve a significant improvement on detection performance with **80%** mAP with only **3.7M** parameters for MobileNet and **3.2M** parameters for MobileNetV2. At most **10%~20%** improvment compared with plain neural networks.
 - The overall architecture can be visualized like this: 
 
 <img src="https://github.com/jianing-sun/Food-Detection-by-YOLOv2-with-Transfer-Learning/blob/master/asset/overall_method.png" />
@@ -51,13 +51,11 @@ Note the structure of *Feature Extraction Network* and *Food Detection Network* 
 
 `avg_iou.png` - trade-off between the number of anchor boxes with average IoU
 
-## 3. Related Work
+## 3. Reference
 
 - [You Only Look Once: Unified, RealTime Object Detection (YOLOv1)](https://pjreddie.com/media/files/papers/yolo_1.pdf)
 - [YOLO9000: Better, Faster, Stronger (YOLOv2)](https://arxiv.org/pdf/1612.08242.pdf)
 - [How Transferable are Features in Deep Neural Networks](https://papers.nips.cc/paper/5347-how-transferable-are-features-in-deep-neural-networks.pdf)
-
-## 4. Code Reference
 
 - Keras-YOLO: https://github.com/experiencor
 
